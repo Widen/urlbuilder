@@ -2,4 +2,5 @@
 .gradle
 .settings
 bin/
+bintest/
 build/

@@ -19,6 +19,7 @@ import org.junit.Test;
 
 public class UrlBuilderTest
 {
+	
 	@Test
 	public void testTypicalUsage()
 	{
@@ -151,6 +152,13 @@ public class UrlBuilderTest
 	{
 		String url = new UrlBuilder("another.host.com", "foo/bar/baz.html").modeProtocolRelative().toString();
 		assertEquals("//another.host.com/foo/bar/baz.html", url);
+	}
+
+	@Test
+	public void testAmpersand()
+	{
+		String url = new UrlBuilder("my.host.com", "foo & bar").addParameter("1&2", "3&4").addParameter("a", "b&c").toString();
+		assertEquals("http://my.host.com/foo%20%26%20bar?1%262=3%264&a=b%26c", url);
 	}
 	
 	@Test
