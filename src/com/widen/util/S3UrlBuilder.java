@@ -174,8 +174,6 @@ public class S3UrlBuilder
 
 	public String toString()
 	{
-		builder.modeFullyQualified();
-
 		String canonicalizedResource = String.format("/%s/%s", bucket, getPathSegments());
 
 		if (!isValidDnsBucketName() || BucketEncoding.PATH.equals(requestedBucketEncoding))
