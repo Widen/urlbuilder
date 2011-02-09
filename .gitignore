@@ -4,3 +4,7 @@
 bin/
 bintest/
 build/
+out/
+urlbuilder.iml
+urlbuilder.ipr
+urlbuilder.iws
