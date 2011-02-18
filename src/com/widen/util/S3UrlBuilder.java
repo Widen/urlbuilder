@@ -1,13 +1,40 @@
+/*
+ * Copyright 2010 Widen Enterprises, Inc.
+ * Madison, Wisconsin USA -- www.widen.com
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
+ * the License. You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
+ * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
+ * specific language governing permissions and limitations under the License.
+ */
 package com.widen.util;
-
-import sun.misc.BASE64Encoder;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.security.SignatureException;
-import java.util.*;
+import java.util.Date;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Utility class for constructing syntactically correct S3 URLs using a fluent method-chaining API.
+ * It strives simply to be more robust then manually constructing URLs by string concatenation.
+ *
+ * <p><b>Typical usage:</b>
+ * <code>new S3UrlBuilder("urlbuildertests.widen.com", "cat.jpeg").expireIn(1, TimeUnit.HOURS).usingCredentials(awsAccount, awsPrivateKey).toString()</code>
+ * <b>produces</b> <code>http://urlbuildertests.widen.com.s3.amazonaws.com/cat.jpeg?Expires=1522540800&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Signature=fHj68yJqZ1ImRrsgogBHZdb4Ceo%3D</code>
+ *
+ * <p>The methods {@link #usingBucketVirtualHost}, {@link #usingBucketInPath}, {@link #usingBucketInHostname},
+ * control where the bucket name is encoded into the URL.
+ *
+ * @version 0.9.2
+ */
 public class S3UrlBuilder
 {
 	private String bucket;
@@ -20,12 +47,20 @@ public class S3UrlBuilder
 
 	private ExpireDateHolder expireDate = new ExpireDateHolder();
 
+	private String attachmentFilename;
+
 	private String awsAccount;
 
 	private String awsPrivateKey;
 
 	private final UrlBuilder builder = new UrlBuilder();
 
+	/**
+	 * Available S3 Regions.
+	 *
+	 * When <code>PATH</code> encoding is used the
+	 * the region must be correctly set with the location of the bucket.
+	 */
 	public enum Region
 	{
 		US_STANDARD("s3.amazonaws.com"),
@@ -48,7 +83,7 @@ public class S3UrlBuilder
 		PATH
 	}
 
-	class ExpireDateHolder
+	private class ExpireDateHolder
 	{
 		long duration;
 
@@ -72,8 +107,23 @@ public class S3UrlBuilder
 
 			return new Date(futureMillis);
 		}
+
+		boolean isSet()
+		{
+			return getExpireDate() != null;
+		}
 	}
 
+	/**
+	 * Easily, and correctly, construct URLs for S3.
+	 *
+	 * @param bucket
+	 *      name as String
+	 * @param key
+	 *      name as String
+	 *
+	 * @throws IllegalArgumentException if bucket or key is null
+	 */
 	public S3UrlBuilder(String bucket, String key)
 	{
 		withBucket(bucket);
@@ -83,6 +133,14 @@ public class S3UrlBuilder
 		builder.modeFullyQualified();
 	}
 
+	/**
+	 * Time generated link is valid for. Expire time is calculated when
+	 * #toString() is executed.
+	 *
+	 * @param duration
+	 * @param unit
+	 * @return self
+	 */
 	public S3UrlBuilder expireIn(long duration, TimeUnit unit)
 	{
 		checkNotNull(duration, "duration");
@@ -94,6 +152,12 @@ public class S3UrlBuilder
 		return this;
 	}
 
+	/**
+	 * Set absolute time URL will expire. Time is accurate to seconds.
+	 *
+	 * @param date
+	 * @return
+	 */
 	public S3UrlBuilder expireAt(Date date)
 	{
 		expireDate.instant = date;
@@ -101,6 +165,15 @@ public class S3UrlBuilder
 		return this;
 	}
 
+	/**
+	 * Set AWS account and private key.
+	 * Required when a signed URL is generated.
+	 *
+	 * @param awsAccount
+	 * @param awsPrivateKey
+	 * @return
+	 * @throws IllegalArgumentException if awsAccount or awsPrivateKey is null
+	 */
 	public S3UrlBuilder usingCredentials(String awsAccount, String awsPrivateKey)
 	{
 		checkNotNull(awsAccount, "awsAccount");
@@ -112,6 +185,15 @@ public class S3UrlBuilder
 		return this;
 	}
 
+	/**
+	 * Set Region of bucket. Default Region is US_STANDARD.
+	 *
+	 * @param region
+	 * @return
+	 * @throws IllegalArgumentException if region is null
+	 *
+	 * @see <a href="http://docs.amazonwebservices.com/AmazonS3/latest/dev/LocationSelection.html">S3 Location Selection Docs</a>
+	 */
 	public S3UrlBuilder inRegion(Region region)
 	{
 		checkNotNull(region, "region");
@@ -121,16 +203,30 @@ public class S3UrlBuilder
 		return this;
 	}
 
+	/**
+	 * Reset S3 bucket to new value
+	 *
+	 * @param bucket
+	 * @return
+	 * @throws IllegalArgumentException if bucket is blank
+	 */
 	public S3UrlBuilder withBucket(String bucket)
 	{
 		checkNotBlank(bucket, "bucket");
 
-		this.bucket = cleanBucketName(bucket);
+		this.bucket = bucket;
 
 		return this;
 	}
 
-		public S3UrlBuilder withKey(String key)
+	/**
+	 * Reset S3 key to new value
+	 *
+	 * @param key
+	 * @return self
+	 * @throws IllegalArgumentException if key is blank
+	 */
+	public S3UrlBuilder withKey(String key)
 	{
 		checkNotBlank(key, "key");
 
@@ -139,81 +235,123 @@ public class S3UrlBuilder
 		return this;
 	}
 
-	private String getPathSegments()
-	{
-		return UrlBuilder.StringUtilsInternal.join(key, "/");
-	}
-
-	private String cleanBucketName(String s)
-	{
-		return s.replace("/", "");
-	}
-
+	/**
+	 * Set URL generation to use bucket name as hostname.
+	 *
+	 * @see <a href="http://docs.amazonwebservices.com/AmazonS3/latest/dev/VirtualHosting.html">S3 Virtual Hosting Docs</a>
+	 *
+	 * @return self
+	 */
 	public S3UrlBuilder usingBucketVirtualHost()
 	{
 		requestedBucketEncoding = BucketEncoding.VIRTUAL_DNS;
 		return S3UrlBuilder.this;
 	}
 
+	/**
+	 * Set URL generation to encode bucket into path.
+	 *
+	 * @return self
+	 */
 	public S3UrlBuilder usingBucketInPath()
 	{
 		requestedBucketEncoding = BucketEncoding.PATH;
 		return S3UrlBuilder.this;
 	}
 
+	/**
+	 * Set URL generation to prefix bucket to hostname ".s3.amazonaws.com"
+	 *
+	 * This is the default generation mode.
+	 *
+	 * @return self
+	 */
 	public S3UrlBuilder usingBucketInHostname()
 	{
 		requestedBucketEncoding = BucketEncoding.DNS;
 		return S3UrlBuilder.this;
 	}
 
-	public S3UrlBuilder downloadFilename(String filename)
-	{
-		return S3UrlBuilder.this;
-	}
-
+	/**
+	 * Construct URL using specific S3 conventions.
+	 *
+	 * @return
+	 *      Generated URL as String
+	 */
 	public String toString()
 	{
-		String canonicalizedResource = String.format("/%s/%s", bucket, getPathSegments());
+		String pathSegments = getKey();
+
+		String canonicalResource = String.format("/%s/%s", bucket, pathSegments);
 
 		if (!isValidDnsBucketName() || BucketEncoding.PATH.equals(requestedBucketEncoding))
 		{
 			builder.withHostname(region.endpoint);
-			builder.withPath(canonicalizedResource);
+			builder.withPath(canonicalResource);
 		}
 		else if (BucketEncoding.VIRTUAL_DNS.equals(requestedBucketEncoding))
 		{
 			builder.withHostname(bucket);
-			builder.withPath(getPathSegments());
+			builder.withPath(pathSegments);
 		}
 		else
 		{
 			builder.withHostname(bucket + "." + region.endpoint);
-			builder.withPath(getPathSegments());
+			builder.withPath(pathSegments);
 		}
 
-		Date expireOn = expireDate.getExpireDate();
-
-		if (expireOn != null)
+		if (UrlBuilder.StringUtilsInternal.isNotBlank(attachmentFilename))
 		{
-			builder.clearParameters();
+			canSign();
 
-			if (UrlBuilder.StringUtilsInternal.isBlank(awsAccount) || UrlBuilder.StringUtilsInternal.isBlank(awsPrivateKey))
-			{
-				throw new IllegalArgumentException("AWS Account and Private Key must be specified when generating expiring URLs.");
-			}
-
-			builder.addParameters(signParams(expireOn, canonicalizedResource));
+			builder.addParameter("response-content-disposition", String.format("attachment; filename=\"%s\"", attachmentFilename));
 		}
 
-		return builder.toString();
+		if (expireDate.isSet())
+		{
+			canSign();
+
+			Map<String, String> params = signParams(expireDate.getExpireDate(), canonicalResource, builder);
+
+			builder.addParameters(params);
+		}
+
+		String result = builder.toString();
+
+		builder.clearParameters(); //clean for any subsequent calls to toString()
+
+		return result;
 	}
 
+	private void canSign()
+	{
+		if (!expireDate.isSet())
+		{
+			throw new IllegalStateException("Expire date must be set when generating signed URLs.");
+		}
+
+		if (UrlBuilder.StringUtilsInternal.isBlank(awsAccount) || UrlBuilder.StringUtilsInternal.isBlank(awsPrivateKey))
+		{
+			throw new IllegalStateException("AWS Account and AWS Private Key must be specified when generating signed URLs.");
+		}
+	}
+
+	/**
+	 * Get current key value.
+	 *
+	 * @return
+	 *     path segments separated by '/'
+	 */
 	public String getKey()
 	{
 		return UrlBuilder.StringUtilsInternal.join(key, "/");
 	}
 
+	/**
+	 * Set generated URL to use the "https" scheme.
+	 *
+	 * @return self
+	 */
 	public S3UrlBuilder usingSsl()
 	{
 		builder.usingSsl();
@@ -221,6 +359,13 @@ public class S3UrlBuilder
 		return this;
 	}
 
+	/**
+	 * Set generated URL to use "https" scheme.
+	 *
+	 * @param useSsl
+	 *      true to use "https" or false to use "http"
+	 * @return self
+	 */
 	public S3UrlBuilder usingSsl(boolean useSsl)
 	{
 		builder.usingSsl(useSsl);
@@ -228,20 +373,12 @@ public class S3UrlBuilder
 		return this;
 	}
 
-	public S3UrlBuilder addParameter(String key, Object value)
-	{
-		builder.addParameter(key, value);
-
-		return this;
-	}
-
-	public S3UrlBuilder addParameters(Map<String, ? extends Object> params)
-	{
-		builder.addParameters(params);
-
-		return this;
-	}
-
+	/**
+	 * Add 'hash' fragment to generated URL. Value does not modify S3 signature.
+	 *
+	 * @param fragment
+	 * @return self
+	 */
 	public S3UrlBuilder withFragment(String fragment)
 	{
 		builder.withFragment(fragment);
@@ -249,6 +386,11 @@ public class S3UrlBuilder
 		return this;
 	}
 
+	/**
+	 * Set generation mode to Protocol Relative; e.g. <code>"//my.host.com/foo/bar.html"</code>
+	 *
+	 * @return self
+	 */
 	public S3UrlBuilder modeProtocolRelative()
 	{
 		builder.modeProtocolRelative();
@@ -256,9 +398,36 @@ public class S3UrlBuilder
 		return this;
 	}
 
+	/**
+	 * Set generation mode to Fully Qualified. This is the default mode; e.g. <code>"http://my.host.com/foo/bar.html"</code>
+	 *
+	 * <p>Default mode.
+	 *
+	 * @return self
+	 */
 	public S3UrlBuilder modeFullyQualified()
 	{
 		builder.modeFullyQualified();
+
+		return this;
+	}
+
+	/**
+	 * Hint for "attachment" filename. Informs S3 to add "Content-Disposition; attachment" HTTP header.
+	 *
+	 * @param filename
+	 *      the filename for the attachment; most browsers will raise a "Save File As..." dialog, or immediately save file
+	 */
+	public S3UrlBuilder withAttachmentFilename(String filename)
+	{
+		if (UrlBuilder.StringUtilsInternal.isBlank(filename))
+		{
+			attachmentFilename = null;
+		}
+		else
+		{
+			attachmentFilename = filename;
+		}
 
 		return this;
 	}
@@ -287,7 +456,7 @@ public class S3UrlBuilder
 	/**
 	 * http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html
 	 */
-	private Map<String, String> signParams(Date expireTime, String path)
+	private Map<String, String> signParams(Date expireTime, String canonicalResource, UrlBuilder builder)
 	{
 		String expires = String.valueOf(expireTime.getTime() / 1000);
 
@@ -297,10 +466,19 @@ public class S3UrlBuilder
 		stringToSign.append("\n"); //content md5
 		stringToSign.append("\n"); //content type
 		stringToSign.append(expires + "\n");
-		//stringToSign.append("\n"); //canonicalizedAmzHeaders
-		stringToSign.append(path); //canonicalizedResource
+		stringToSign.append(canonicalResource);
 
-		System.out.println(stringToSign);
+		if (!builder.queryParams.isEmpty())
+		{
+			stringToSign.append("?");
+		}
+
+		for (UrlBuilder.QueryParam queryParam : builder.queryParams)
+		{
+			stringToSign.append(String.format("%s=%s", queryParam.key, queryParam.value));
+		}
+
+		//System.err.println("sign text for " + canonicalResource + "\n" + stringToSign);
 
 		String signature = AmazonAWSJavaSDKInternal.sign(stringToSign.toString(), awsPrivateKey);
 
@@ -415,8 +593,6 @@ public class S3UrlBuilder
 
 		/**
 		 * Computes RFC 2104-compliant HMAC signature.
-		 *
-		 * <p>Uses com.sun.BASE64Encoder to avoid external dependencies.
 		 */
 		private static String sign(String data, String key)
 		{
@@ -424,7 +600,7 @@ public class S3UrlBuilder
 			{
 				Mac mac = Mac.getInstance("HmacSHA1");
 				mac.init(new SecretKeySpec(key.getBytes(), "HmacSHA1"));
-				return new BASE64Encoder().encode(mac.doFinal(data.getBytes("UTF-8")));
+				return Base64.encodeBytes(mac.doFinal(data.getBytes("UTF-8")));
 			}
 			catch (Exception e)
 			{

@@ -13,9 +13,9 @@
  */
 package com.widen.util;
 
-import static org.junit.Assert.assertEquals;
-
 import org.junit.Test;
+
+import static org.junit.Assert.assertEquals;
 
 public class UrlBuilderTest
 {
@@ -240,5 +240,17 @@ public class UrlBuilderTest
 		UrlBuilder builder = new UrlBuilder("my.host.com", "/");
 		builder.addPathSegment("/foo");
 		assertEquals("http://my.host.com/foo", builder.toString());
+	}
+
+	@Test
+	public void testClearParameter()
+	{
+		UrlBuilder builder = new UrlBuilder("my.host.com", "/foo.jpg");
+		builder.addParameter("key0", "a");
+		builder.addParameter("key1", "b");
+		builder.addParameter("key2", "c");
+		assertEquals("http://my.host.com/foo.jpg?key0=a&key1=b&key2=c", builder.toString());
+		builder.clearParameter("key0", "key2");
+		assertEquals("http://my.host.com/foo.jpg?key1=b", builder.toString());
 	}
 }

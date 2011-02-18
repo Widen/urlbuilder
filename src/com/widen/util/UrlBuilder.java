@@ -29,10 +29,7 @@ import java.util.Map.Entry;
  * <p>The methods {@link #modeFullyQualified}, {@link #modeHostnameRelative}, {@link #modeProtocolRelative},
  * control the URL generation format.
  * 
- * <p>Several methods from <code><a href="http://commons.apache.org/lang/">org.apache.commons.lang.StringUtils</a></code>
- * are used privately and are included internally.
- * 
- * @version 0.9.1
+ * @version 0.9.2
  */
 public class UrlBuilder
 {
@@ -48,7 +45,7 @@ public class UrlBuilder
 	
 	private String fragment;
 
-	private List<QueryParam> queryParams = new ArrayList<QueryParam>();
+	List<QueryParam> queryParams = new ArrayList<QueryParam>();
 
 	private GenerationMode mode = GenerationMode.HOSTNAME_RELATIVE;
 
@@ -263,6 +260,27 @@ public class UrlBuilder
 	public UrlBuilder clearParameters()
 	{
 		queryParams.clear();
+
+		return this;
+	}
+
+	public UrlBuilder clearParameter(String... params)
+	{
+		if (params != null)
+		{
+			List<String> remove = Arrays.asList(params);
+
+			for(Iterator<QueryParam> iter = queryParams.iterator(); iter.hasNext();)
+			{
+				QueryParam next = iter.next();
+
+				if (remove.contains(next.key))
+				{
+					iter.remove();
+				}
+			}
+		}
+
 		return this;
 	}
 
@@ -421,10 +439,10 @@ public class UrlBuilder
 		HOSTNAME_RELATIVE;
 	}
 
-	private static class QueryParam
+	static class QueryParam
 	{
-		private String key;
-		private String value;
+		String key;
+		String value;
 
 		QueryParam(String key, String value)
 		{
