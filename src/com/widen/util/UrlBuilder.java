@@ -29,7 +29,7 @@ import java.util.Map.Entry;
  * <p>The methods {@link #modeFullyQualified}, {@link #modeHostnameRelative}, {@link #modeProtocolRelative},
  * control the URL generation format.
  * 
- * @version 0.9.2
+ * @version 0.9.3
  */
 public class UrlBuilder
 {

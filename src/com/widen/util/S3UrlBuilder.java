@@ -33,7 +33,7 @@ import java.util.concurrent.TimeUnit;
  * <p>The methods {@link #usingBucketVirtualHost}, {@link #usingBucketInPath}, {@link #usingBucketInHostname},
  * control where the bucket name is encoded into the URL.
  *
- * @version 0.9.2
+ * @version 0.9.3
  */
 public class S3UrlBuilder
 {
