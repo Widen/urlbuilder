@@ -1,6 +1,7 @@
 .classpath
 .gradle
 .settings
+.idea/workspace.xml
 bin/
 bintest/
 build/
