@@ -9,15 +9,17 @@ produces `http://my.host.com/foo/bar?a=b`
 
 Features
 --------
-* Automatic slash management in paths. Slashes will be deduped or added as necessary when using addPathSegment
+* Automatic slash management in paths. Slashes will be de-duped or added as necessary when using addPathSegment
 * Automatic URL encoding for both path segments (preserving slashes) and query parameters
-* '+'s in URL encoded values are replaced with '%20's
+* '+'s in URL encoded values are replaced with '%20's (if using default BuiltinEncoder)
 * Options for generation of fully-qualified, hostname relative, or protocol relative URLs
 * Fluent method-chaining API
 
 More examples at https://github.com/Widen/urlbuilder/blob/master/test/com/widen/util/UrlBuilderTest.java
 
-Version 0.9 - Initial release
-Version 0.9.1 - Add S3UrlBuilder
+* Version 0.9 - Initial release
+* Version 0.9.1 - Add S3UrlBuilder
+* Version 0.9.3 - Add content-disposition overrides to S3UrlBuilder
+* Version 0.9.4 - Add Encoder interface for plugable URL encoding schemes
 
 Licensed under Apache, Version 2.0.

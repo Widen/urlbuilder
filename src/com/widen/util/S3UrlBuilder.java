@@ -13,14 +13,14 @@
  */
 package com.widen.util;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.security.SignatureException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 /**
  * Utility class for constructing syntactically correct S3 URLs using a fluent method-chaining API.
@@ -300,7 +300,7 @@ public class S3UrlBuilder
 			builder.withPath(pathSegments);
 		}
 
-		if (UrlBuilder.StringUtilsInternal.isNotBlank(attachmentFilename))
+		if (StringUtilsInternal.isNotBlank(attachmentFilename))
 		{
 			canSign();
 
@@ -330,7 +330,7 @@ public class S3UrlBuilder
 			throw new IllegalStateException("Expire date must be set when generating signed URLs.");
 		}
 
-		if (UrlBuilder.StringUtilsInternal.isBlank(awsAccount) || UrlBuilder.StringUtilsInternal.isBlank(awsPrivateKey))
+		if (StringUtilsInternal.isBlank(awsAccount) || StringUtilsInternal.isBlank(awsPrivateKey))
 		{
 			throw new IllegalStateException("AWS Account and AWS Private Key must be specified when generating signed URLs.");
 		}
@@ -344,7 +344,7 @@ public class S3UrlBuilder
 	 */
 	public String getKey()
 	{
-		return UrlBuilder.StringUtilsInternal.join(key, "/");
+		return StringUtilsInternal.join(key, "/");
 	}
 
 	/**
@@ -420,7 +420,7 @@ public class S3UrlBuilder
 	 */
 	public S3UrlBuilder withAttachmentFilename(String filename)
 	{
-		if (UrlBuilder.StringUtilsInternal.isBlank(filename))
+		if (StringUtilsInternal.isBlank(filename))
 		{
 			attachmentFilename = null;
 		}
@@ -442,7 +442,7 @@ public class S3UrlBuilder
 
 	private static void checkNotBlank(String s, String var)
 	{
-		if (UrlBuilder.StringUtilsInternal.isBlank(s))
+		if (StringUtilsInternal.isBlank(s))
 		{
 			throw new IllegalArgumentException(var + " cannot be null or empty.");
 		}
