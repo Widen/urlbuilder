@@ -1,12 +1,25 @@
 apply plugin: 'java'
 apply plugin: 'eclipse'
 apply plugin: 'idea'
+apply plugin: 'maven'
 
 group = 'widen'
-version = '0.9.3'
+version = '0.9.4'
 
 sourceCompatibility = 1.5
 targetCompatibility = 1.5
+
+repositories {
+	mavenCentral()
+}
+
+uploadArchives {
+	repositories.mavenDeployer {
+		repository(url: 'https://widen.artifactoryonline.com/widen/libs-widen-public') {
+			authentication(userName: USER, password: PASSWORD)
+		}
+	}
+}
 
 dependencies {
 	testCompile group: 'junit', name: 'junit', version: '4.8.2'
@@ -29,8 +42,13 @@ clean {
 	delete sourceSets.test.classesDir
 }
 
-jar {
-	from sourceSets.main.allJava
+task sourcesJar(type: Jar) {
+	from sourceSets.main.allSource
+	classifier = 'sources'
+}
+
+artifacts {
+	archives sourcesJar
 }
 
 eclipseClasspath {

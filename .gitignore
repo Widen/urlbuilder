@@ -6,6 +6,7 @@ bin/
 bintest/
 build/
 out/
+gradle.properties
 urlbuilder.iml
 urlbuilder.ipr
 urlbuilder.iws
