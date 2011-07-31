@@ -30,8 +30,22 @@ public class UrlBuilderTest
 	@Test
 	public void testFQSpec()
 	{
-		String url = new UrlBuilder("https://my.host.com:8080/bar?a=b#foo").toString();
-		assertEquals("https://my.host.com:8080/bar?a=b#foo", url);
+		String url = new UrlBuilder("http://my.host.com:8080/bar?a=b#foo").toString();
+		assertEquals("http://my.host.com:8080/bar?a=b#foo", url);
+	}
+
+	@Test
+	public void testFQPortOnDefaultPort()
+	{
+		String url = new UrlBuilder("https://my.host.com/bar?a=b#foo").toString();
+		assertEquals("https://my.host.com/bar?a=b#foo", url);
+	}
+
+	@Test
+	public void testFQPortOnDefaultPortSecure()
+	{
+		String url = new UrlBuilder("https://my.host.com:443/bar?a=b#foo").toString();
+		assertEquals("https://my.host.com/bar?a=b#foo", url);
 	}
 
 	@Test
