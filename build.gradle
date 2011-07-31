@@ -4,7 +4,7 @@ apply plugin: 'idea'
 apply plugin: 'maven'
 
 group = 'widen'
-version = '0.9.4'
+version = '0.9.5'
 
 sourceCompatibility = 1.5
 targetCompatibility = 1.5

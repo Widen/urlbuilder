@@ -26,7 +26,34 @@ public class UrlBuilderTest
 		String url = new UrlBuilder("my.host.com", "foo").addPathSegment("bar").addParameter("a", "b").toString();
 		assertEquals("http://my.host.com/foo/bar?a=b", url);
 	}
-	
+
+	@Test
+	public void testFQSpec()
+	{
+		String url = new UrlBuilder("https://my.host.com:8080/bar?a=b#foo").toString();
+		assertEquals("https://my.host.com:8080/bar?a=b#foo", url);
+	}
+
+	@Test
+	public void testFQSpecMultipleQueryParams()
+	{
+		String url = new UrlBuilder("https://my.host.com:8080/bar?a=b&c=d").toString();
+		assertEquals("https://my.host.com:8080/bar?a=b&c=d", url);
+	}
+
+	@Test
+	public void testFQSpecEncodedQueryParams()
+	{
+		String url = new UrlBuilder("https://my.host.com:8080/bar?a%20b=c%20d").toString();
+		assertEquals("https://my.host.com:8080/bar?a%20b=c%20d", url);
+	}
+
+	@Test(expected = UrlBuilder.NonParsableUrl.class)
+	public void testInvalidFQSpec()
+	{
+		String url = new UrlBuilder("htt").toString();
+	}
+
 	@Test
 	public void testNoParams()
 	{

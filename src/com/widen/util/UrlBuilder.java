@@ -13,6 +13,8 @@
  */
 package com.widen.util;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
@@ -61,18 +63,63 @@ public class UrlBuilder
 	 */
 	public UrlBuilder()
 	{
-		mode = GenerationMode.HOSTNAME_RELATIVE;
 	}
 
 	/**
-	 * Construct a UrlBuilder with only an initial path.
+	 * Construct a UrlBuilder from a String.
+	 *
+	 * <p/>
+	 * {@link java.net.URL java.net.URL} is used to parse the input.
 	 * 
-	 * @see #withHostname(String)
+	 * @throws NonParsableUrl
+	 * 		if input is not parsable into a java.net.URL object
 	 */
-	public UrlBuilder(String path)
+	public UrlBuilder(String spec)
 	{
-		withPath(path);
-		mode = GenerationMode.HOSTNAME_RELATIVE;
+		URL url = parseUrlInput(spec);
+
+		usingSsl(url.getProtocol().equals("https") ? true : false);
+		withHostname(url.getHost());
+		setPort(url.getPort());
+		withPath(url.getPath());
+
+		String params = url.getQuery();
+		if (params != null)
+		{
+			String[] pairs = params.split("&");
+			for (String pair : pairs)
+			{
+				String[] keyValue = pair.split("=");
+				if (keyValue.length == 2)
+				{
+					addParameter(decodeValue(keyValue[0]), decodeValue(keyValue[1]));
+				}
+			}
+		}
+
+		withFragment(url.getRef());
+
+		mode = GenerationMode.FULLY_QUALIFIED;
+	}
+
+	private URL parseUrlInput(String spec)
+	{
+		try
+		{
+			return new URL(spec);
+		}
+		catch (MalformedURLException e)
+		{
+			throw new NonParsableUrl(e);
+		}
+	}
+
+	public class NonParsableUrl extends RuntimeException
+	{
+		public NonParsableUrl(MalformedURLException e)
+		{
+			super(e);
+		}
 	}
 
 	/**
@@ -80,9 +127,7 @@ public class UrlBuilder
 	 */
 	public UrlBuilder(String hostname, String path)
 	{
-		withHostname(hostname);
-		withPath(path);
-		mode = GenerationMode.FULLY_QUALIFIED;
+		this(hostname, 80, path);
 	}
 
 	/**
@@ -278,6 +323,9 @@ public class UrlBuilder
 		return this;
 	}
 
+	/**
+	 * Remove previously added query parameters
+	 */
 	public UrlBuilder clearParameter(String... params)
 	{
 		if (params != null)
@@ -296,6 +344,18 @@ public class UrlBuilder
 		}
 
 		return this;
+	}
+
+	/**
+	 * Text of query parameters as they would be append to the generated URL
+	 * <ul>
+	 * <li>Keys and values will be URL encoded
+	 * <li>Key value pairs will be separated by an ampersand (&)
+	 * </ul>
+	 */
+	public String getQueryParameterString()
+	{
+		return buildParams();
 	}
 
 	/**
@@ -436,6 +496,16 @@ public class UrlBuilder
 		}
 		
 		return encoder.encode(value);
+	}
+
+	private String decodeValue(String value)
+	{
+		if (value == null)
+		{
+			return "";
+		}
+
+		return encoder.decode(value);
 	}
 
 	private enum GenerationMode

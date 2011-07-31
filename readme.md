@@ -11,7 +11,7 @@ Features
 --------
 * Automatic slash management in paths. Slashes will be de-duped or added as necessary when using addPathSegment
 * Automatic URL encoding for both path segments (preserving slashes) and query parameters
-* '+'s in URL encoded values are replaced with '%20's (if using default BuiltinEncoder)
+* '+'s in URL encoded values are replaced with '%20's
 * Options for generation of fully-qualified, hostname relative, or protocol relative URLs
 * Fluent method-chaining API
 
@@ -21,5 +21,9 @@ More examples at https://github.com/Widen/urlbuilder/blob/master/test/com/widen/
 * Version 0.9.1 - Add S3UrlBuilder
 * Version 0.9.3 - Add content-disposition overrides to S3UrlBuilder
 * Version 0.9.4 - Add Encoder interface for plugable URL encoding schemes
+* Version 0.9.5
+    * Single String constructor now uses java.net.URL to reconstruct the URL; for old behavior use `new UrlBuilder().withPath("foo")`
+    * added decode() method to Encoder interface
+    * added getQueryParameterString() to get value of URL after "?"
 
 Licensed under Apache, Version 2.0.
