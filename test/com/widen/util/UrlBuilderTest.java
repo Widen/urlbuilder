@@ -294,4 +294,15 @@ public class UrlBuilderTest
 		builder.clearParameter("key0", "key2");
 		assertEquals("http://my.host.com/foo.jpg?key1=b", builder.toString());
 	}
+
+    @Test
+    public void testNullAndEmptyValuesDoNotEmitEqualsSign()
+    {
+        UrlBuilder builder = new UrlBuilder("my.host.com", "/foo.jpg");
+        builder.addParameter("key0", null);
+        builder.addParameter("key1", "");
+        builder.addParameter("key2", "c");
+        assertEquals("http://my.host.com/foo.jpg?key0&key1&key2=c", builder.toString());
+    }
+
 }

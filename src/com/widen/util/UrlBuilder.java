@@ -292,8 +292,9 @@ public class UrlBuilder
 	{
 		if (StringUtilsInternal.isNotBlank(key))
 		{
-			queryParams.add(new QueryParam(key, value.toString()));
+			queryParams.add(new QueryParam(key, value != null ? value.toString() : null));
 		}
+
 		return this;
 	}
 
@@ -512,7 +513,7 @@ public class UrlBuilder
 	{
 		FULLY_QUALIFIED,
 		PROTOCOL_RELATIVE,
-		HOSTNAME_RELATIVE;
+		HOSTNAME_RELATIVE
 	}
 
 	class QueryParam
@@ -528,9 +529,18 @@ public class UrlBuilder
 
 		@Override
 		public String toString()
-		{
-			return encoder.encode(key) + "=" + encoder.encode(value);
-		}
-	}
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.append(encoder.encode(key));
+
+            if (StringUtilsInternal.isNotBlank(value))
+            {
+                sb.append("=").append(encoder.encode(value));
+            }
+
+            return sb.toString();
+        }
+    }
 
 }
