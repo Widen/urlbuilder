@@ -1,19 +1,27 @@
 package com.widen.util;
 
-import org.junit.Test;
-
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
+
+import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
 public class S3UrlBuilderTest
 {
-	private final Date farFuture = new Date(1522540800000L);
+	private static final Date farFuture = new Date(1522540800000L);
 
-	private final String awsAccount = "AKIAJKECYSQBZYJDUDSQ";
+	private static final String awsAccount = "AKIAJKECYSQBZYJDUDSQ";
 
-	private final String awsPrivateKey = System.getProperty("awsPrivateKey", "set -DawsPrivateKey");
+	private static final String awsPrivateKey = System.getProperty("awsPrivateKey");
+
+    static
+    {
+        if (awsPrivateKey == null)
+        {
+            System.err.println("Set system property -DawsPrivateKey to have signature tests pass!");
+        }
+    }
 
 	@Test
 	public void testSimpleBucketKey()
@@ -47,6 +55,22 @@ public class S3UrlBuilderTest
 		assertEquals("http://bucketuno.test.com/foo/bar.jpg", builder.toString());
 	}
 
+    @Test
+    public void testRegionEndointSetting()
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "foo/bar.jpg").inRegion(S3UrlBuilder.Region.EU_IRELAND);
+
+        assertEquals("http://bucketuno.s3-eu-west-1.amazonaws.com/foo/bar.jpg", builder.toString());
+    }
+
+    @Test
+    public void testEndointSetting()
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "foo/bar.jpg").withEndpoint("s3clone.example.com").usingBucketInPath();
+
+        assertEquals("http://s3clone.example.com/bucketuno/foo/bar.jpg", builder.toString());
+    }
+
 	@Test
 	public void testHostnameAndPathStyleStringsAreTheSameSignature()
 	{
@@ -54,7 +78,7 @@ public class S3UrlBuilderTest
 
 		String dns = builder.toString();
 
-		System.out.println(dns.toString());
+		System.out.println(dns);
 		assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/cat.jpeg?Expires=1522540800&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Signature=fHj68yJqZ1ImRrsgogBHZdb4Ceo%3D", dns);
 
 		String path = builder.usingBucketInPath().toString();

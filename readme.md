@@ -25,5 +25,6 @@ More examples at https://github.com/Widen/urlbuilder/blob/master/test/com/widen/
     * Single String constructor now uses java.net.URL to reconstruct the URL; for old behavior use `new UrlBuilder().withPath("foo")`
     * added decode() method to Encoder interface
     * added getQueryParameterString() to get value of URL after "?"
+* Version 0.9.6 - Add custom S3 api endpoints
 
 Licensed under Apache, Version 2.0.

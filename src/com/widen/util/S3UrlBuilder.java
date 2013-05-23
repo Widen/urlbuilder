@@ -41,7 +41,7 @@ public class S3UrlBuilder
 
 	private List<String> key;
 
-	private Region region = Region.US_STANDARD;
+    private String endpoint = Region.US_STANDARD.endpoint;
 
 	private BucketEncoding requestedBucketEncoding = BucketEncoding.DNS;
 
@@ -66,7 +66,10 @@ public class S3UrlBuilder
 		US_STANDARD("s3.amazonaws.com"),
 		US_WEST("s3-us-west-1.amazonaws.com"),
 		EU_IRELAND("s3-eu-west-1.amazonaws.com"),
-		ASIA_PACIFIC_SINGAPORE("s3-ap-southeast-1.amazonaws.com");
+		ASIA_PACIFIC_SINGAPORE("s3-ap-southeast-1.amazonaws.com"),
+		ASIA_PACIFIC_SYDNEY("s3-ap-southeast-2.amazonaws.com"),
+		ASIA_PACIFIC_TOKYO("s3-ap-northeast-1.amazonaws.com"),
+        SOUTH_AMERICA_SAO_PAULO("s3-sa-east-1.amazonaws.com");
 
 		String endpoint;
 
@@ -139,7 +142,6 @@ public class S3UrlBuilder
 	 *
 	 * @param duration
 	 * @param unit
-	 * @return self
 	 */
 	public S3UrlBuilder expireIn(long duration, TimeUnit unit)
 	{
@@ -156,7 +158,6 @@ public class S3UrlBuilder
 	 * Set absolute time URL will expire. Time is accurate to seconds.
 	 *
 	 * @param date
-	 * @return
 	 */
 	public S3UrlBuilder expireAt(Date date)
 	{
@@ -171,7 +172,6 @@ public class S3UrlBuilder
 	 *
 	 * @param awsAccount
 	 * @param awsPrivateKey
-	 * @return
 	 * @throws IllegalArgumentException if awsAccount or awsPrivateKey is null
 	 */
 	public S3UrlBuilder usingCredentials(String awsAccount, String awsPrivateKey)
@@ -185,11 +185,25 @@ public class S3UrlBuilder
 		return this;
 	}
 
+    /**
+     * Set a custom endpoint for the S3 service.<br />
+     *
+     * When using Amazon services you should use #inRegion() instead of this method.
+     * This method is only necessary when using S3 API compatible services like <a href="http://ceph.com/">CEPH</a>
+     *
+     * @param endpoint fully-quantified DNS hostname of S3 service
+     */
+    public S3UrlBuilder withEndpoint(String endpoint)
+    {
+        this.endpoint = endpoint;
+
+        return this;
+    }
+
 	/**
 	 * Set Region of bucket. Default Region is US_STANDARD.
 	 *
 	 * @param region
-	 * @return
 	 * @throws IllegalArgumentException if region is null
 	 *
 	 * @see <a href="http://docs.amazonwebservices.com/AmazonS3/latest/dev/LocationSelection.html">S3 Location Selection Docs</a>
@@ -198,7 +212,7 @@ public class S3UrlBuilder
 	{
 		checkNotNull(region, "region");
 
-		this.region = region;
+		endpoint = region.endpoint;
 
 		return this;
 	}
@@ -207,7 +221,6 @@ public class S3UrlBuilder
 	 * Reset S3 bucket to new value
 	 *
 	 * @param bucket
-	 * @return
 	 * @throws IllegalArgumentException if bucket is blank
 	 */
 	public S3UrlBuilder withBucket(String bucket)
@@ -223,7 +236,6 @@ public class S3UrlBuilder
 	 * Reset S3 key to new value
 	 *
 	 * @param key
-	 * @return self
 	 * @throws IllegalArgumentException if key is blank
 	 */
 	public S3UrlBuilder withKey(String key)
@@ -239,8 +251,6 @@ public class S3UrlBuilder
 	 * Set URL generation to use bucket name as hostname.
 	 *
 	 * @see <a href="http://docs.amazonwebservices.com/AmazonS3/latest/dev/VirtualHosting.html">S3 Virtual Hosting Docs</a>
-	 *
-	 * @return self
 	 */
 	public S3UrlBuilder usingBucketVirtualHost()
 	{
@@ -250,8 +260,6 @@ public class S3UrlBuilder
 
 	/**
 	 * Set URL generation to encode bucket into path.
-	 *
-	 * @return self
 	 */
 	public S3UrlBuilder usingBucketInPath()
 	{
@@ -263,8 +271,6 @@ public class S3UrlBuilder
 	 * Set URL generation to prefix bucket to hostname ".s3.amazonaws.com"
 	 *
 	 * This is the default generation mode.
-	 *
-	 * @return self
 	 */
 	public S3UrlBuilder usingBucketInHostname()
 	{
@@ -286,7 +292,7 @@ public class S3UrlBuilder
 
 		if (!isValidDnsBucketName() || BucketEncoding.PATH.equals(requestedBucketEncoding))
 		{
-			builder.withHostname(region.endpoint);
+			builder.withHostname(endpoint);
 			builder.withPath(canonicalResource);
 		}
 		else if (BucketEncoding.VIRTUAL_DNS.equals(requestedBucketEncoding))
@@ -296,7 +302,7 @@ public class S3UrlBuilder
 		}
 		else
 		{
-			builder.withHostname(bucket + "." + region.endpoint);
+			builder.withHostname(bucket + "." + endpoint);
 			builder.withPath(pathSegments);
 		}
 
@@ -349,8 +355,6 @@ public class S3UrlBuilder
 
 	/**
 	 * Set generated URL to use the "https" scheme.
-	 *
-	 * @return self
 	 */
 	public S3UrlBuilder usingSsl()
 	{
@@ -364,7 +368,6 @@ public class S3UrlBuilder
 	 *
 	 * @param useSsl
 	 *      true to use "https" or false to use "http"
-	 * @return self
 	 */
 	public S3UrlBuilder usingSsl(boolean useSsl)
 	{
@@ -377,7 +380,6 @@ public class S3UrlBuilder
 	 * Add 'hash' fragment to generated URL. Value does not modify S3 signature.
 	 *
 	 * @param fragment
-	 * @return self
 	 */
 	public S3UrlBuilder withFragment(String fragment)
 	{
@@ -388,8 +390,6 @@ public class S3UrlBuilder
 
 	/**
 	 * Set generation mode to Protocol Relative; e.g. <code>"//my.host.com/foo/bar.html"</code>
-	 *
-	 * @return self
 	 */
 	public S3UrlBuilder modeProtocolRelative()
 	{
@@ -402,8 +402,6 @@ public class S3UrlBuilder
 	 * Set generation mode to Fully Qualified. This is the default mode; e.g. <code>"http://my.host.com/foo/bar.html"</code>
 	 *
 	 * <p>Default mode.
-	 *
-	 * @return self
 	 */
 	public S3UrlBuilder modeFullyQualified()
 	{
