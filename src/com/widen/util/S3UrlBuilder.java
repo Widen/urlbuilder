@@ -64,7 +64,8 @@ public class S3UrlBuilder
 	public enum Region
 	{
 		US_STANDARD("s3.amazonaws.com"),
-		US_WEST("s3-us-west-1.amazonaws.com"),
+		US_WEST_NORTHERN_CALIFORNIA("s3-us-west-1.amazonaws.com"),
+		US_WEST_OREGON("s3-us-west-2.amazonaws.com"),
 		EU_IRELAND("s3-eu-west-1.amazonaws.com"),
 		ASIA_PACIFIC_SINGAPORE("s3-ap-southeast-1.amazonaws.com"),
 		ASIA_PACIFIC_SYDNEY("s3-ap-southeast-2.amazonaws.com"),
