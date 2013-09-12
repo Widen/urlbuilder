@@ -253,8 +253,15 @@ public class UrlBuilderTest
 		assertEquals("http://my.host.com/foo/bar/baz", builder.addPathSegment("/baz").toString());
 		assertEquals("http://my.host.com/foo/bar/baz/qux", builder.addPathSegment("//qux//").toString());
 	}
-	
-	@Test
+
+    @Test
+    public void testPathReturnsSlashSeparatedPath()
+    {
+        UrlBuilder builder = new UrlBuilder("my.host.com", "foo").addPathSegment("bar").addPrefixedPathSegment("baz");
+        assertEquals("/baz/foo/bar", builder.getPath());
+    }
+
+    @Test
 	public void testTrailingSlashPath()
 	{
 		String url = new UrlBuilder("my.host.com", "foo/bar").addPathSegment("baz").includeTrailingSlash().toString();

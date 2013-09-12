@@ -26,5 +26,6 @@ More examples at https://github.com/Widen/urlbuilder/blob/master/test/com/widen/
     * added decode() method to Encoder interface
     * added getQueryParameterString() to get value of URL after "?"
 * Version 0.9.6 - Add custom S3 api endpoints
+* Version 0.9.7 - change getPath() to return standard slash-separated value instead of List.toString() comma-separated value
 
 Licensed under Apache, Version 2.0.

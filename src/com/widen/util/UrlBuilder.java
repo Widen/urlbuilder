@@ -215,9 +215,9 @@ public class UrlBuilder
 	}
 
 	public String getPath()
-	{
-		return path.toString();
-	}
+    {
+        return "/" + StringUtilsInternal.join(path, "/");
+    }
 
 	/**
 	 * URL protocol will be "https"
