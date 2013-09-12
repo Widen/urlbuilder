@@ -3,9 +3,6 @@
   <component name="CopyrightManager" default="">
     <module2copyright />
   </component>
-  <component name="DependencyValidationManager">
-    <option name="SKIP_IMPORT_STATEMENTS" value="false" />
-  </component>
   <component name="EntryPointsManager">
     <entry_points version="2.0" />
   </component>
@@ -25,9 +22,6 @@
     <option name="HEAP_SIZE" />
     <option name="LOCALE" />
     <option name="OPEN_IN_BROWSER" value="true" />
-  </component>
-  <component name="MavenRunner">
-    <option name="jreName" value="#JAVA_INTERNAL" />
   </component>
   <component name="Palette2">
     <group name="Swing">
