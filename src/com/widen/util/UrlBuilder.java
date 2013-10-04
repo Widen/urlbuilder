@@ -141,7 +141,39 @@ public class UrlBuilder
 		mode = GenerationMode.FULLY_QUALIFIED;
 	}
 
-	/**
+
+    public boolean isSslEnabled()
+    {
+        return ssl;
+    }
+
+    public int getPort()
+    {
+        return port;
+    }
+
+    public String getHostname()
+    {
+        return hostname;
+    }
+
+    public String getPath()
+    {
+        return "/" + StringUtilsInternal.join(path, "/");
+    }
+
+    public String getFragment()
+    {
+        return fragment;
+    }
+
+    public GenerationMode getMode()
+    {
+        return mode;
+    }
+
+
+    /**
 	 * @param hostname
 	 * 		FQDN to be used when generating fully qualified URLs
 	 */
@@ -208,16 +240,6 @@ public class UrlBuilder
 
 		return list;
 	}
-
-	public String getHostname()
-	{
-		return hostname;
-	}
-
-	public String getPath()
-    {
-        return "/" + StringUtilsInternal.join(path, "/");
-    }
 
 	/**
 	 * URL protocol will be "https"
@@ -509,7 +531,7 @@ public class UrlBuilder
 		return encoder.decode(value);
 	}
 
-	private enum GenerationMode
+	public enum GenerationMode
 	{
 		FULLY_QUALIFIED,
 		PROTOCOL_RELATIVE,
