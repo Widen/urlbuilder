@@ -28,5 +28,10 @@ More examples at https://github.com/Widen/urlbuilder/blob/master/test/com/widen/
 * Version 0.9.6 - Add custom S3 api endpoints
 * Version 0.9.7 - change getPath() to return standard slash-separated value instead of List.toString() comma-separated value
 * Version 0.9.8 - add additional getters for properties ssl, hostname, port, fragment, generation mode
+* Version 0.10.1 - EXPERIENTIAL
+	* add CloudfrontUrlBuilder for generating signed URLs
+	* crypto utilities for reading PEM (text) and DER (binary) RSA keys
+	* added dependency on bouncycastle (only required for reading PEM keys)
+	* Individual URLBuilder parameters can now have distinct encoders
 
 Licensed under Apache, Version 2.0.

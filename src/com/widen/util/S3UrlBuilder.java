@@ -146,8 +146,8 @@ public class S3UrlBuilder
 	 */
 	public S3UrlBuilder expireIn(long duration, TimeUnit unit)
 	{
-		checkNotNull(duration, "duration");
-		checkNotNull(unit, "unit");
+		InternalUtils.checkNotNull(duration, "duration");
+		InternalUtils.checkNotNull(unit, "unit");
 
 		expireDate.duration = duration;
 		expireDate.unit = unit;
@@ -177,8 +177,8 @@ public class S3UrlBuilder
 	 */
 	public S3UrlBuilder usingCredentials(String awsAccount, String awsPrivateKey)
 	{
-		checkNotNull(awsAccount, "awsAccount");
-		checkNotNull(awsPrivateKey, "awsPrivateKey");
+		InternalUtils.checkNotNull(awsAccount, "awsAccount");
+		InternalUtils.checkNotNull(awsPrivateKey, "awsPrivateKey");
 
 		this.awsAccount = awsAccount;
 		this.awsPrivateKey = awsPrivateKey;
@@ -211,7 +211,7 @@ public class S3UrlBuilder
 	 */
 	public S3UrlBuilder inRegion(Region region)
 	{
-		checkNotNull(region, "region");
+		InternalUtils.checkNotNull(region, "region");
 
 		endpoint = region.endpoint;
 
@@ -226,7 +226,7 @@ public class S3UrlBuilder
 	 */
 	public S3UrlBuilder withBucket(String bucket)
 	{
-		checkNotBlank(bucket, "bucket");
+		InternalUtils.checkNotBlank(bucket, "bucket");
 
 		this.bucket = bucket;
 
@@ -241,7 +241,7 @@ public class S3UrlBuilder
 	 */
 	public S3UrlBuilder withKey(String key)
 	{
-		checkNotBlank(key, "key");
+		InternalUtils.checkNotBlank(key, "key");
 
 		this.key = builder.makePathSegments(key);
 
@@ -431,23 +431,7 @@ public class S3UrlBuilder
 		return this;
 	}
 
-	private static void checkNotNull(Object o, String var)
-	{
-		if (o == null)
-		{
-			throw new IllegalArgumentException(var + " cannot be null.");
-		}
-	}
-
-	private static void checkNotBlank(String s, String var)
-	{
-		if (StringUtilsInternal.isBlank(s))
-		{
-			throw new IllegalArgumentException(var + " cannot be null or empty.");
-		}
-	}
-
-	private boolean isValidDnsBucketName()
+    private boolean isValidDnsBucketName()
 	{
 		return AmazonAWSJavaSDKInternal.isValidV2BucketName(bucket);
 	}

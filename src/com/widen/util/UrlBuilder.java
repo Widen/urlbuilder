@@ -314,11 +314,30 @@ public class UrlBuilder
 	{
 		if (StringUtilsInternal.isNotBlank(key))
 		{
-			queryParams.add(new QueryParam(key, value != null ? value.toString() : null));
+			queryParams.add(new QueryParam(key, value != null ? value.toString() : null, encoder));
 		}
 
 		return this;
 	}
+
+    /**
+     * Append parameter to the query string.
+     * @param key
+     * 		text for the query parameter key
+     * @param value
+     * 		toString() result will be added as the value
+     * @param encoder
+     *      encoder to use for this value
+     */
+    public UrlBuilder addParameter(String key, Object value, Encoder encoder)
+    {
+        if (StringUtilsInternal.isNotBlank(key))
+        {
+            queryParams.add(new QueryParam(key, value != null ? value.toString() : null, encoder));
+        }
+
+        return this;
+    }
 
 	/**
 	 * Append a Map of parameters to the query string. Both keys and values
@@ -327,9 +346,9 @@ public class UrlBuilder
 	 * 		String key = text for the query parameter key<br/>
 	 * 		Object value = toString() result at the time of  will be added as the value
 	 */
-	public UrlBuilder addParameters(Map<String, ? extends Object> params)
+	public UrlBuilder addParameters(Map<String, ?> params)
 	{
-		for (Entry<String, ? extends Object> e : params.entrySet())
+		for (Entry<String, ?> e : params.entrySet())
 		{
 			addParameter(e.getKey(), e.getValue().toString());
 		}
@@ -542,12 +561,14 @@ public class UrlBuilder
 	{
 		String key;
 		String value;
+        Encoder encoder;
 
-		QueryParam(String key, String value)
+		QueryParam(String key, String value, Encoder encoder)
 		{
 			this.key = key;
 			this.value = value;
-		}
+            this.encoder = encoder;
+        }
 
 		@Override
 		public String toString()
