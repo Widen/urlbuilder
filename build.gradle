@@ -23,7 +23,8 @@ uploadArchives {
 dependencies {
     testCompile group: 'junit', name: 'junit', version: '4.8.2'
     testCompile group: 'commons-io', name: 'commons-io', version: '2.4'
-    compile group: 'org.bouncycastle', name: 'bcprov-jdk16', version: '1.46'
+    compile group: 'org.bouncycastle', name: 'bcprov-ext-jdk15on', version: '1.49'
+    compile group: 'org.bouncycastle', name: 'bcpkix-jdk15on', version: '1.49'
 }
 
 sourceSets {
