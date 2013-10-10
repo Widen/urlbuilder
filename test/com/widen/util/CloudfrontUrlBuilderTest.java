@@ -32,7 +32,7 @@ public class CloudfrontUrlBuilderTest
         builder.withKey("/0/b/c/d/test2.jpeg");
         String secondUseBuilderValue = builder.toString();
 
-        CloudfrontUrlBuilder builder2 = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/0/b/c/d/test2.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem, "BC").withAttachmentFilename("test.jpg").expireAt(new Date(1381356586000L));
+        CloudfrontUrlBuilder builder2 = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/0/b/c/d/test2.jpeg", "APKAIW7O5EPF5UBMJ7KQ", der, "BC").withAttachmentFilename("test.jpg").expireAt(new Date(1381356586000L));
         Assert.assertEquals(secondUseBuilderValue, builder2.toString());
     }
 

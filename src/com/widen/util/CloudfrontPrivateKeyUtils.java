@@ -1,16 +1,15 @@
 package com.widen.util;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.security.KeyFactory;
-import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.Security;
 import java.security.spec.PKCS8EncodedKeySpec;
 
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
-import org.bouncycastle.openssl.PEMReader;
+import org.bouncycastle.openssl.PEMKeyPair;
+import org.bouncycastle.openssl.PEMParser;
 
 public class CloudfrontPrivateKeyUtils
 {
@@ -35,11 +34,14 @@ public class CloudfrontPrivateKeyUtils
 
         try
         {
-            PEMReader reader = new PEMReader(new StringReader(pem));
-            KeyPair pair = (KeyPair) reader.readObject();
-            return pair.getPrivate();
+            PEMParser reader = new PEMParser(new StringReader(pem));
+            PEMKeyPair pair = (PEMKeyPair) reader.readObject();
+            PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(pair.getPrivateKeyInfo().getEncoded());
+
+            KeyFactory factory = KeyFactory.getInstance("RSA");
+            return factory.generatePrivate(privateKeySpec);
         }
-        catch (IOException e)
+        catch (Exception e)
         {
             throw new RuntimeException(e);
         }
