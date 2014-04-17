@@ -243,7 +243,7 @@ public class S3UrlBuilder
 	{
 		InternalUtils.checkNotBlank(key, "key");
 
-		this.key = builder.makePathSegments(key);
+		this.key = builder.makePathSegments(key, true);
 
 		return this;
 	}
@@ -294,17 +294,17 @@ public class S3UrlBuilder
 		if (!isValidDnsBucketName() || BucketEncoding.PATH.equals(requestedBucketEncoding))
 		{
 			builder.withHostname(endpoint);
-			builder.withPath(canonicalResource);
+			builder.withPathEncoded(canonicalResource);
 		}
 		else if (BucketEncoding.VIRTUAL_DNS.equals(requestedBucketEncoding))
 		{
 			builder.withHostname(bucket);
-			builder.withPath(pathSegments);
+			builder.withPathEncoded(pathSegments);
 		}
 		else
 		{
 			builder.withHostname(bucket + "." + endpoint);
-			builder.withPath(pathSegments);
+			builder.withPathEncoded(pathSegments);
 		}
 
 		if (StringUtilsInternal.isNotBlank(attachmentFilename))

@@ -33,5 +33,8 @@ More examples at https://github.com/Widen/urlbuilder/blob/master/test/com/widen/
 	* crypto utilities for reading PEM (text) and DER (binary) RSA keys
 	* added dependency on bouncycastle (only required for reading PEM keys)
 	* Individual URLBuilder parameters can now have distinct encoders
+* Version 0.10.3 - EXPERIENTIAL
+    * Fix bug in S3UrlBuilder which double-encoded chars in key
+
 
 Licensed under Apache, Version 2.0.

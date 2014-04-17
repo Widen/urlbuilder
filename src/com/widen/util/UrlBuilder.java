@@ -214,12 +214,19 @@ public class UrlBuilder
 	 */
 	public UrlBuilder withPath(String newPath)
 	{
-		path = makePathSegments(newPath);
+		path = makePathSegments(newPath, true);
 
 		return this;
 	}
 
-	List<String> makePathSegments(String in)
+    public UrlBuilder withPathEncoded(String newPath)
+    {
+        path = makePathSegments(newPath, false);
+
+        return this;
+    }
+
+	List<String> makePathSegments(String in, boolean encodeSegments)
 	{
 		ArrayList<String> list = new ArrayList<String>();
 
@@ -233,10 +240,17 @@ public class UrlBuilder
 		for (String s : split)
 		{
 			if (StringUtilsInternal.isNotBlank(s))
-			{
-				list.add(encodeValue(s));
-			}
-		}
+            {
+                if (encodeSegments)
+                {
+                    list.add(encodeValue(s));
+                }
+                else
+                {
+                    list.add(s);
+                }
+            }
+        }
 
 		return list;
 	}
@@ -272,7 +286,7 @@ public class UrlBuilder
 	{
 		if (StringUtilsInternal.isNotBlank(value))
 		{
-			path.addAll(makePathSegments(value));
+			path.addAll(makePathSegments(value, true));
 		}
 
 		return this;
@@ -288,7 +302,7 @@ public class UrlBuilder
 	{
 		if (StringUtilsInternal.isNotBlank(value))
 		{
-			path.addAll(0, makePathSegments(value));
+			path.addAll(0, makePathSegments(value, true));
 		}
 
 		return this;
