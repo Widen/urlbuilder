@@ -492,6 +492,10 @@ public class S3UrlBuilder
 		params.put("Signature", signature);
 		params.put("Expires", expires);
 		params.put("AWSAccessKeyId", awsKey);
+		if (awsSessionToken != null)
+		{
+			params.put("x-amz-security-token", awsSessionToken);
+		}
 
 		return params;
 	}
