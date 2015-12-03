@@ -468,21 +468,20 @@ public class S3UrlBuilder
 		stringToSign.append("\n"); //content md5
 		stringToSign.append("\n"); //content type
 		stringToSign.append(expires + "\n");
+		if (awsSessionToken != null)
+		{
+			stringToSign.append("x-amz-security-token:").append(awsSessionToken).append("\n");
+		}
 		stringToSign.append(canonicalResource);
 
 		if (!builder.queryParams.isEmpty())
 		{
 			stringToSign.append("?");
-		}
 
-		for (UrlBuilder.QueryParam queryParam : builder.queryParams)
-		{
-			stringToSign.append(String.format("%s=%s", queryParam.key, queryParam.value));
-		}
-
-		if (awsSessionToken != null)
-		{
-			stringToSign.append("x-amz-security-token=").append(awsSessionToken);
+			for (UrlBuilder.QueryParam queryParam : builder.queryParams)
+			{
+				stringToSign.append(String.format("%s=%s", queryParam.key, queryParam.value));
+			}
 		}
 
 		//System.err.println("sign text for " + canonicalResource + "\n" + stringToSign);
