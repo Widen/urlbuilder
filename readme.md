@@ -35,6 +35,7 @@ More examples at https://github.com/Widen/urlbuilder/blob/master/test/com/widen/
 	* Individual URLBuilder parameters can now have distinct encoders
 * Version 0.10.3 - EXPERIENTIAL
     * Fix bug in S3UrlBuilder which double-encoded chars in key
-
+* Version 0.10.4 - EXPERIENTIAL
+    * Add support for S3 pre-signed URLs using STS credentials
 
 Licensed under Apache, Version 2.0.

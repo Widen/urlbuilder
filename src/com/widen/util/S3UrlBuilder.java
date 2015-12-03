@@ -27,7 +27,7 @@ import javax.crypto.spec.SecretKeySpec;
  * It strives simply to be more robust then manually constructing URLs by string concatenation.
  *
  * <p><b>Typical usage:</b>
- * <code>new S3UrlBuilder("urlbuildertests.widen.com", "cat.jpeg").expireIn(1, TimeUnit.HOURS).usingCredentials(awsAccount, awsPrivateKey).toString()</code>
+ * <code>new S3UrlBuilder("urlbuildertests.widen.com", "cat.jpeg").expireIn(1, TimeUnit.HOURS).usingCredentials(awsKey, awsPrivateKey).toString()</code>
  * <b>produces</b> <code>http://urlbuildertests.widen.com.s3.amazonaws.com/cat.jpeg?Expires=1522540800&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Signature=fHj68yJqZ1ImRrsgogBHZdb4Ceo%3D</code>
  *
  * <p>The methods {@link #usingBucketVirtualHost}, {@link #usingBucketInPath}, {@link #usingBucketInHostname},
@@ -49,9 +49,11 @@ public class S3UrlBuilder
 
 	private String attachmentFilename;
 
-	private String awsAccount;
+	private String awsKey;
 
 	private String awsPrivateKey;
+
+	private String awsSessionToken;
 
 	private final UrlBuilder builder = new UrlBuilder();
 
@@ -171,18 +173,35 @@ public class S3UrlBuilder
 	 * Set AWS account and private key.
 	 * Required when a signed URL is generated.
 	 *
-	 * @param awsAccount
+	 * @param awsKey
 	 * @param awsPrivateKey
-	 * @throws IllegalArgumentException if awsAccount or awsPrivateKey is null
+	 * @throws IllegalArgumentException if awsKey or awsPrivateKey is null
 	 */
-	public S3UrlBuilder usingCredentials(String awsAccount, String awsPrivateKey)
+	public S3UrlBuilder usingCredentials(String awsKey, String awsPrivateKey)
 	{
-		InternalUtils.checkNotNull(awsAccount, "awsAccount");
+		InternalUtils.checkNotNull(awsKey, "awsKey");
 		InternalUtils.checkNotNull(awsPrivateKey, "awsPrivateKey");
 
-		this.awsAccount = awsAccount;
+		this.awsKey = awsKey;
 		this.awsPrivateKey = awsPrivateKey;
 
+		return this;
+	}
+
+	/**
+	 * Set AWS account, private key and STS (Security Token Service) token
+	 * Required when a signed URL is generated.
+	 *
+	 * @param awsKey
+	 * @param awsPrivateKey
+	 * @throws IllegalArgumentException if awsKey or awsPrivateKey is null
+	 */
+	public S3UrlBuilder usingCredentials(String awsKey, String awsPrivateKey, String awsSessionToken)
+	{
+		usingCredentials(awsKey, awsPrivateKey);
+		InternalUtils.checkNotNull(awsSessionToken, "awsSessionToken");
+
+		this.awsSessionToken = awsSessionToken;
 		return this;
 	}
 
@@ -337,7 +356,7 @@ public class S3UrlBuilder
 			throw new IllegalStateException("Expire date must be set when generating signed URLs.");
 		}
 
-		if (StringUtilsInternal.isBlank(awsAccount) || StringUtilsInternal.isBlank(awsPrivateKey))
+		if (StringUtilsInternal.isBlank(awsKey) || StringUtilsInternal.isBlank(awsPrivateKey))
 		{
 			throw new IllegalStateException("AWS Account and AWS Private Key must be specified when generating signed URLs.");
 		}
@@ -461,6 +480,11 @@ public class S3UrlBuilder
 			stringToSign.append(String.format("%s=%s", queryParam.key, queryParam.value));
 		}
 
+		if (awsSessionToken != null)
+		{
+			stringToSign.append("x-amz-security-token=").append(awsSessionToken);
+		}
+
 		//System.err.println("sign text for " + canonicalResource + "\n" + stringToSign);
 
 		String signature = AmazonAWSJavaSDKInternal.sign(stringToSign.toString(), awsPrivateKey);
@@ -468,7 +492,7 @@ public class S3UrlBuilder
 		HashMap<String, String> params = new HashMap<String, String>();
 		params.put("Signature", signature);
 		params.put("Expires", expires);
-		params.put("AWSAccessKeyId", awsAccount);
+		params.put("AWSAccessKeyId", awsKey);
 
 		return params;
 	}
