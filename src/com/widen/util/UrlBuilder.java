@@ -416,7 +416,7 @@ public class UrlBuilder
 
 	/**
 	 * @param fragment
-	 * 		text to appear after the '#' in the generated URL. Will be URLEncoded.
+	 * 		text to appear after the '#' in the generated URL. Will not be URLEncoded.
 	 */
 	public UrlBuilder withFragment(String fragment)
 	{
@@ -517,7 +517,7 @@ public class UrlBuilder
 
 		if (StringUtilsInternal.isNotBlank(fragment))
 		{
-			url.append("#" + encodeValue(fragment));
+			url.append("#" + fragment);
 		}
 
 		return url.toString();

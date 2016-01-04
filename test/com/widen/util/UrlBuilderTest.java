@@ -219,8 +219,8 @@ public class UrlBuilderTest
 	@Test
 	public void testFragment()
 	{
-		String url = new UrlBuilder("my.host.com", "foo/bar/baz.html").withFragment("chapter 1").toString();
-		assertEquals("http://my.host.com/foo/bar/baz.html#chapter%201", url);
+		String url = new UrlBuilder("my.host.com", "foo/bar/baz.html").withFragment("chapter/1").toString();
+		assertEquals("http://my.host.com/foo/bar/baz.html#chapter/1", url);
 	}
 
 	@Test
