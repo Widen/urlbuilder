@@ -13,6 +13,8 @@
  */
 package com.widen.util;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.security.SignatureException;
 import java.util.Date;
 import java.util.HashMap;
@@ -330,7 +332,11 @@ public class S3UrlBuilder
 		{
 			canSign();
 
-			builder.addParameter("response-content-disposition", String.format("attachment; filename=\"%s\"", attachmentFilename));
+			// Most browsers don't support UTF-8 in HTTP headers (HTTP officially supports only ISO-8859-1). In
+			// practice, S3 only supports ASCII characters, so strip everything out not in the ASCII range.
+			String strippedFilename = attachmentFilename.replaceAll("[^\\x00-\\x7F]", "");
+
+			builder.addParameter("response-content-disposition", String.format("attachment; filename=\"%s\"", strippedFilename));
 		}
 
 		if (expireDate.isSet())
