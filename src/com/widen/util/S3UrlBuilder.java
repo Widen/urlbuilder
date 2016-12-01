@@ -334,9 +334,9 @@ public class S3UrlBuilder
 
 			// Most browsers don't support UTF-8 in HTTP headers (HTTP officially supports only ISO-8859-1). In
 			// practice, S3 only supports ASCII characters, so strip everything out not in the ASCII range.
-			String strippedFilename = attachmentFilename.replaceAll("[^\\x00-\\x7F]", "");
+			String cleanedFilename = InternalUtils.cleanAttachmentFilename(attachmentFilename);
 
-			builder.addParameter("response-content-disposition", String.format("attachment; filename=\"%s\"", strippedFilename));
+			builder.addParameter("response-content-disposition", String.format("attachment; filename=\"%s\"", cleanedFilename));
 		}
 
 		if (expireDate.isSet())

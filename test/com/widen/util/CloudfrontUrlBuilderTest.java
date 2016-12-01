@@ -36,4 +36,12 @@ public class CloudfrontUrlBuilderTest
         Assert.assertEquals(secondUseBuilderValue, builder2.toString());
     }
 
+    @Test
+    public void testNonAsciiCharsInAttachment()
+    {
+        CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/0/b/c/d/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem).withAttachmentFilename("+ƒoo.jpg").expireAt(new Date(1381356586000L));
+
+        Assert.assertEquals("http://dnnfhn216qiqy.cloudfront.net/0/b/c/d/test.jpeg?response-content-disposition=attachment%3B%20filename%3D%22%2Boo.jpg%22&Expires=1381356586&Signature=RCox6ROYo4adkdPkG-6HFIoAcyQLh~aih4wt4yfplKVzQBFXN2hUQfTN17w6~IayG9sYKKA11iNEWFJRGXZzlE32TUDFNW4x6ETir9mlPsq5EKeKzRpZQluQhdW1TSfDyvPQNnMdObCt3MZCpl~BJKfG6FJtyFWot2~ISGU-URQBq0ItnLzBkigmM4a2xKI2NQ0W-bIEqowfigBvaf-GBtNrknXt7sRyc6mE1XGxh4zh-9t1TJDRH3EvzzJWpATUJrh8D69kuv7BoJ~jKWMrbXFSXHDQjP1ZFAPAY9fSjaoyrPh1AlYA1s6qruGPcr7JmiVoUiAakDzQmq92xjdGnA__&Key-Pair-Id=APKAIW7O5EPF5UBMJ7KQ", builder.toString());
+    }
+
 }

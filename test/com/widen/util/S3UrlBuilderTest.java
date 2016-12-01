@@ -130,4 +130,12 @@ public class S3UrlBuilderTest
         assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/cat3%20%25%20public.jpeg", builder.toString());
     }
 
+	@Test
+	public void testNonAsciiCharsInAttachment()
+	{
+		S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "foo.jpeg").withAttachmentFilename("+ƒoo.jpeg").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
+
+		assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/foo.jpeg?response-content-disposition=attachment%3B%20filename%3D%22%2Boo.jpeg%22&Signature=eBNNBRl7DlXOjhIb5YSlpR9BPOg%3D&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Expires=1522540800", builder.toString());
+	}
+
 }
