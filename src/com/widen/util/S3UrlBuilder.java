@@ -336,7 +336,10 @@ public class S3UrlBuilder
 			// practice, S3 only supports ASCII characters, so strip everything out not in the ASCII range.
 			String cleanedFilename = InternalUtils.cleanAttachmentFilename(attachmentFilename);
 
-			builder.addParameter("response-content-disposition", String.format("attachment; filename=\"%s\"", cleanedFilename));
+			if (StringUtilsInternal.isNotBlank(cleanedFilename))
+			{
+				builder.addParameter("response-content-disposition", String.format("attachment; filename=\"%s\"", cleanedFilename));
+			}
 		}
 
 		if (expireDate.isSet())
