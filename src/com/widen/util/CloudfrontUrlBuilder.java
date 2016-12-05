@@ -118,7 +118,12 @@ public class CloudfrontUrlBuilder
 
         if (attachmentFilename != null)
         {
-            builder.addParameter("response-content-disposition", String.format("attachment; filename=\"%s\"", attachmentFilename));
+            String cleanedFilename = InternalUtils.cleanAttachmentFilename(attachmentFilename);
+
+            if (StringUtilsInternal.isNotBlank(cleanedFilename))
+            {
+                builder.addParameter("response-content-disposition", String.format("attachment; filename=\"%s\"", cleanedFilename));
+            }
         }
 
         String cannedPolicy = String.format("{\"Statement\":[{\"Resource\":\"%s\",\"Condition\":{\"DateLessThan\":{\"AWS:EpochTime\":%s}}}]}", builder.toString(), expireDate.getExpiresUtcSeconds());
