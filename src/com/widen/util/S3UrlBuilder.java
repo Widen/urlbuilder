@@ -332,8 +332,6 @@ public class S3UrlBuilder
 		{
 			canSign();
 
-			// Most browsers don't support UTF-8 in HTTP headers (HTTP officially supports only ISO-8859-1). In
-			// practice, S3 only supports ASCII characters, so strip everything out not in the ASCII range.
 			String cleanedFilename = InternalUtils.cleanAttachmentFilename(attachmentFilename);
 
 			if (StringUtilsInternal.isNotBlank(cleanedFilename))
