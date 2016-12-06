@@ -13,8 +13,6 @@
  */
 package com.widen.util;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
 import java.security.SignatureException;
 import java.util.Date;
 import java.util.HashMap;
@@ -327,12 +325,7 @@ public class S3UrlBuilder
         {
             canSign();
 
-            String cleanedFilename = InternalUtils.cleanAttachmentFilename(attachmentFilename);
-
-            if (StringUtilsInternal.isNotBlank(cleanedFilename))
-            {
-                builder.addParameter("response-content-disposition", String.format("attachment; filename=\"%s\"", cleanedFilename));
-            }
+            builder.addParameter("response-content-disposition", HttpUtils.createContentDispositionHeader("attachment", attachmentFilename));
         }
 
         if (expireDate.isSet())
