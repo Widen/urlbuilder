@@ -9,11 +9,11 @@ import static org.junit.Assert.assertEquals;
 
 public class S3UrlBuilderTest
 {
-	private static final Date farFuture = new Date(1522540800000L);
+    private static final Date farFuture = new Date(1522540800000L);
 
-	private static final String awsAccount = "AKIAJKECYSQBZYJDUDSQ";
+    private static final String awsAccount = "AKIAJKECYSQBZYJDUDSQ";
 
-	private static final String awsPrivateKey = System.getProperty("awsPrivateKey");
+    private static final String awsPrivateKey = System.getProperty("awsPrivateKey");
 
     static
     {
@@ -23,37 +23,37 @@ public class S3UrlBuilderTest
         }
     }
 
-	@Test
-	public void testSimpleBucketKey()
-	{
-		S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "foo/bar.jpg");
+    @Test
+    public void testSimpleBucketKey()
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "foo/bar.jpg");
 
-		assertEquals("http://bucketuno.s3.amazonaws.com/foo/bar.jpg", builder.toString());
-	}
+        assertEquals("http://bucketuno.s3.amazonaws.com/foo/bar.jpg", builder.toString());
+    }
 
-	@Test
-	public void testSimpleSlashPrefixedBucketKey()
-	{
-		S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "/foo/bar.jpg");
+    @Test
+    public void testSimpleSlashPrefixedBucketKey()
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "/foo/bar.jpg");
 
-		assertEquals("http://bucketuno.s3.amazonaws.com/foo/bar.jpg", builder.toString());
-	}
+        assertEquals("http://bucketuno.s3.amazonaws.com/foo/bar.jpg", builder.toString());
+    }
 
-	@Test
-	public void testDnsBucket()
-	{
-		S3UrlBuilder builder = new S3UrlBuilder("bucketuno.test.com", "foo/bar.jpg").usingBucketInHostname();
+    @Test
+    public void testDnsBucket()
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("bucketuno.test.com", "foo/bar.jpg").usingBucketInHostname();
 
-		assertEquals("http://bucketuno.test.com.s3.amazonaws.com/foo/bar.jpg", builder.toString());
-	}
+        assertEquals("http://bucketuno.test.com.s3.amazonaws.com/foo/bar.jpg", builder.toString());
+    }
 
-	@Test
-	public void testVirtualHostBucket()
-	{
-		S3UrlBuilder builder = new S3UrlBuilder("bucketuno.test.com", "foo/bar.jpg").usingBucketVirtualHost();
+    @Test
+    public void testVirtualHostBucket()
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("bucketuno.test.com", "foo/bar.jpg").usingBucketVirtualHost();
 
-		assertEquals("http://bucketuno.test.com/foo/bar.jpg", builder.toString());
-	}
+        assertEquals("http://bucketuno.test.com/foo/bar.jpg", builder.toString());
+    }
 
     @Test
     public void testRegionEndointSetting()
@@ -71,56 +71,56 @@ public class S3UrlBuilderTest
         assertEquals("http://s3clone.example.com/bucketuno/foo/bar.jpg", builder.toString());
     }
 
-	@Test
-	public void testHostnameAndPathStyleStringsAreTheSameSignature()
-	{
-		S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat.jpeg").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
+    @Test
+    public void testHostnameAndPathStyleStringsAreTheSameSignature()
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat.jpeg").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
 
-		String dns = builder.toString();
+        String dns = builder.toString();
 
-		System.out.println(dns);
-		assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/cat.jpeg?Expires=1522540800&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Signature=fHj68yJqZ1ImRrsgogBHZdb4Ceo%3D", dns);
+        System.out.println(dns);
+        assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/cat.jpeg?Expires=1522540800&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Signature=fHj68yJqZ1ImRrsgogBHZdb4Ceo%3D", dns);
 
-		String path = builder.usingBucketInPath().toString();
+        String path = builder.usingBucketInPath().toString();
 
-		assertEquals("http://s3.amazonaws.com/urlbuildertests.widen.com/cat.jpeg?Expires=1522540800&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Signature=fHj68yJqZ1ImRrsgogBHZdb4Ceo%3D", path);
-	}
+        assertEquals("http://s3.amazonaws.com/urlbuildertests.widen.com/cat.jpeg?Expires=1522540800&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Signature=fHj68yJqZ1ImRrsgogBHZdb4Ceo%3D", path);
+    }
 
-	@Test(expected = IllegalStateException.class)
-	public void testExpireWithNoAccountsThrows()
-	{
-		S3UrlBuilder builder = new S3UrlBuilder("bucket.test.com", "foo.txt").expireIn(1, TimeUnit.HOURS);
+    @Test(expected = IllegalStateException.class)
+    public void testExpireWithNoAccountsThrows()
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("bucket.test.com", "foo.txt").expireIn(1, TimeUnit.HOURS);
 
-		builder.toString();
-	}
+        builder.toString();
+    }
 
-	@Test
-	public void testExpiringAttachmentFilename()
-	{
-		S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat3-public.jpeg").withAttachmentFilename("kitty-cat.jpg").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
+    @Test
+    public void testExpiringAttachmentFilename()
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat3-public.jpeg").withAttachmentFilename("kitty-cat.jpg").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
 
-		assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/cat3-public.jpeg?response-content-disposition=attachment%3B%20filename%3D%22kitty-cat.jpg%22&Expires=1522540800&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Signature=jH%2BRr3TEjvu2Wk7cq9ER7ybdErg%3D", builder.toString());
-	}
+        assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/cat3-public.jpeg?response-content-disposition=attachment%3B%20filename%3D%22kitty-cat.jpg%22&Expires=1522540800&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Signature=jH%2BRr3TEjvu2Wk7cq9ER7ybdErg%3D", builder.toString());
+    }
 
-	@Test(expected = IllegalStateException.class)
-	public void testPublicAttachmentFilenameThrows()
-	{
-		S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat3-public.jpeg").withAttachmentFilename("kitty-cat.jpg");
+    @Test(expected = IllegalStateException.class)
+    public void testPublicAttachmentFilenameThrows()
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat3-public.jpeg").withAttachmentFilename("kitty-cat.jpg");
 
-		builder.toString();
-	}
+        builder.toString();
+    }
 
-	@Test
-	public void testHashDoesNotChangeSignature()
-	{
-		S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat3-public.jpeg").usingCredentials(awsAccount, awsPrivateKey).expireAt(farFuture);
+    @Test
+    public void testHashDoesNotChangeSignature()
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat3-public.jpeg").usingCredentials(awsAccount, awsPrivateKey).expireAt(farFuture);
 
-		assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/cat3-public.jpeg?Expires=1522540800&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Signature=C39yfdpfO072isjVyekpC4t1GjQ%3D", builder.toString());
+        assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/cat3-public.jpeg?Expires=1522540800&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Signature=C39yfdpfO072isjVyekpC4t1GjQ%3D", builder.toString());
 
-		builder.withFragment("scrollmarker");
+        builder.withFragment("scrollmarker");
 
-		assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/cat3-public.jpeg?Expires=1522540800&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Signature=C39yfdpfO072isjVyekpC4t1GjQ%3D#scrollmarker", builder.toString());
-	}
+        assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/cat3-public.jpeg?Expires=1522540800&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Signature=C39yfdpfO072isjVyekpC4t1GjQ%3D#scrollmarker", builder.toString());
+    }
 
     @Test
     public void testEncodedCharsInKey()
@@ -130,20 +130,20 @@ public class S3UrlBuilderTest
         assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/cat3%20%25%20public.jpeg", builder.toString());
     }
 
-	@Test
-	public void testNonAsciiCharsInAttachment()
-	{
-		S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "foo.jpeg").withAttachmentFilename("+ƒoo.jpeg").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
+    @Test
+    public void testNonAsciiCharsInAttachment()
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "foo.jpeg").withAttachmentFilename("+ƒoo.jpeg").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
 
-		assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/foo.jpeg?response-content-disposition=attachment%3B%20filename%3D%22%2Boo.jpeg%22&Signature=eBNNBRl7DlXOjhIb5YSlpR9BPOg%3D&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Expires=1522540800", builder.toString());
-	}
+        assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/foo.jpeg?response-content-disposition=attachment%3B%20filename%3D%22%2Boo.jpeg%22&Signature=eBNNBRl7DlXOjhIb5YSlpR9BPOg%3D&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Expires=1522540800", builder.toString());
+    }
 
-	@Test
-	public void testOnlyNonAsciiCharsInAttachment()
-	{
-		S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "foo.jpeg").withAttachmentFilename("ƒƒƒƒƒ").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
+    @Test
+    public void testOnlyNonAsciiCharsInAttachment()
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "foo.jpeg").withAttachmentFilename("ƒƒƒƒƒ").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
 
-		assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/foo.jpeg?Signature=E2ee6O2hY968RWZKkYTE29ZNCDk%3D&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Expires=1522540800", builder.toString());
-	}
+        assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/foo.jpeg?Signature=E2ee6O2hY968RWZKkYTE29ZNCDk%3D&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Expires=1522540800", builder.toString());
+    }
 
 }

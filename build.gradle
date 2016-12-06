@@ -9,15 +9,15 @@ sourceCompatibility = 1.6
 targetCompatibility = 1.6
 
 repositories {
-	mavenCentral()
+    mavenCentral()
 }
 
 uploadArchives {
-	repositories.mavenDeployer {
-		repository(url: 'https://widen.artifactoryonline.com/widen/libs-widen-public') {
-			authentication(userName: USER, password: PASSWORD)
-		}
-	}
+    repositories.mavenDeployer {
+        repository(url: 'https://widen.artifactoryonline.com/widen/libs-widen-public') {
+            authentication(userName: USER, password: PASSWORD)
+        }
+    }
 }
 
 dependencies {
@@ -30,26 +30,26 @@ dependencies {
 sourceSets {
     main {
         java {
-            srcDirs = [ file('src') ]
+            srcDirs = [file('src')]
         }
     }
 
     test {
         java {
-            srcDirs = [ file('test') ]
+            srcDirs = [file('test')]
         }
     }
 }
 
 task sourcesJar(type: Jar) {
-	from sourceSets.main.allSource
-	classifier = 'sources'
+    from sourceSets.main.allSource
+    classifier = 'sources'
 }
 
 artifacts {
-	archives sourcesJar
+    archives sourcesJar
 }
 
 tasks.idea {
-    dependsOn = [ ideaModule ]
+    dependsOn = [ideaModule]
 }
