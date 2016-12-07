@@ -20,13 +20,13 @@ produces `http://my.host.com/foo%20%26%20bar?1%262=3%264&a=b%26c`
 * More examples in [UrlBuilderTest](/test/com/widen/util/UrlBuilderTest.java)
 
 ## [S3](https://aws.amazon.com/s3/) Flavored UrlBuilder
-* `[S3UrlBuilder](/src/com/widen/util/S3UrlBuilder.java)` provides specialized functionality building S3 URLs
+* [`S3UrlBuilder`](/src/com/widen/util/S3UrlBuilder.java) provides specialized functionality building S3 URLs
 * `expireIn` and `expireAt` for time-bombing S3 links
 * All hostname methods supported: virtual bucket (`http://bucket.example.com/key.txt`), bucket in path (`https://s3.amazonaws.com/bucket.example.com/key.txt`), or hostname (`http://bucket.example.com.s3.amazonaws.com/key.txt`) 
 * `withAttachmentFilename(String filename)` generates required `Content-Disposition` header for browser file download prompt
 
 ## [Cloudfront](https://aws.amazon.com/cloudfront/) Flavored UrlBuilder
-* `[CloudfrontUrlBuilder](/src/com/widen/util/CloudfrontUrlBuilder.java)` provides specialized functionality for building CloudFront URLs
+* [`CloudfrontUrlBuilder`](/src/com/widen/util/CloudfrontUrlBuilder.java) provides specialized functionality for building CloudFront URLs
 * `expireIn` and `expireAt` for time-bombing CloudFront links
 * `withAttachmentFilename(String filename)` generates required `Content-Disposition` header for browser file download prompt
 
