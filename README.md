@@ -19,7 +19,7 @@ produces `http://my.host.com/foo%20%26%20bar?1%262=3%264&a=b%26c`
 * More examples in [UrlBuilderTest](/test/com/widen/util/UrlBuilderTest.java)
 
 ## [S3](https://aws.amazon.com/s3/) Flavored UrlBuilder
-* [`S3UrlBuilder`](/src/com/widen/util/S3UrlBuilder.java) provides specialized functionality building S3 URLs
+* [`S3UrlBuilder`](/src/com/widen/util/S3UrlBuilder.java) provides specialized functionality building for S3 URLs
 * `expireIn` and `expireAt` for time-bombing S3 links
 * All bucket reference methods supported:
   * [virtual bucket](http://docs.aws.amazon.com/AmazonS3/latest/dev/VirtualHosting.html) (`http://bucket.example.com/key.txt`)
