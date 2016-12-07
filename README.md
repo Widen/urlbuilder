@@ -9,7 +9,6 @@ produces `http://my.host.com/foo/bar?a=b`
     
 produces `http://my.host.com/foo%20%26%20bar?1%262=3%264&a=b%26c`
 
-
 ## Features
 * Automatic slash management in paths. Slashes will be de-duped or added as necessary when using addPathSegment
 * Automatic URL encoding for both path segments (preserving slashes) and query parameters
@@ -22,7 +21,10 @@ produces `http://my.host.com/foo%20%26%20bar?1%262=3%264&a=b%26c`
 ## [S3](https://aws.amazon.com/s3/) Flavored UrlBuilder
 * [`S3UrlBuilder`](/src/com/widen/util/S3UrlBuilder.java) provides specialized functionality building S3 URLs
 * `expireIn` and `expireAt` for time-bombing S3 links
-* All hostname methods supported: virtual bucket (`http://bucket.example.com/key.txt`), bucket in path (`https://s3.amazonaws.com/bucket.example.com/key.txt`), or hostname (`http://bucket.example.com.s3.amazonaws.com/key.txt`) 
+* All bucket reference methods supported:
+  * [virtual bucket](http://docs.aws.amazon.com/AmazonS3/latest/dev/VirtualHosting.html) (`http://bucket.example.com/key.txt`)
+  * [bucket in path](http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingBucket.html#access-bucket-intro) (`https://s3.amazonaws.com/bucket.example.com/key.txt`)
+  * hostname (`http://bucket.example.com.s3.amazonaws.com/key.txt`) 
 * `withAttachmentFilename(String filename)` generates required `Content-Disposition` header for browser file download prompt
 
 ## [Cloudfront](https://aws.amazon.com/cloudfront/) Flavored UrlBuilder
