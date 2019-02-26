@@ -119,6 +119,11 @@ public class CloudfrontUrlBuilder
         if (StringUtilsInternal.isNotBlank(attachmentFilename))
         {
             builder.addParameter("response-content-disposition", HttpUtils.createContentDispositionHeader("attachment", attachmentFilename));
+
+            if(attachmentFilename.toUpperCase().endsWith(".AI"))
+            {
+                builder.addParameter("response-content-type", "application/octet-stream");
+            }
         }
 
         String cannedPolicy = String.format("{\"Statement\":[{\"Resource\":\"%s\",\"Condition\":{\"DateLessThan\":{\"AWS:EpochTime\":%s}}}]}", builder.toString(), expireDate.getExpiresUtcSeconds());
