@@ -22,6 +22,8 @@ public class CloudfrontUrlBuilder
 
     private String attachmentFilename;
 
+    private String contentType;
+
     private ExpireDateHolder expireDate = new ExpireDateHolder();
 
     private Map<String, String> parameters = new LinkedHashMap<String, String>();
@@ -59,6 +61,12 @@ public class CloudfrontUrlBuilder
     public CloudfrontUrlBuilder withAttachmentFilename(String attachmentFilename)
     {
         this.attachmentFilename = attachmentFilename;
+        return this;
+    }
+
+    public CloudfrontUrlBuilder withContentType(String contentType)
+    {
+        this.contentType = contentType;
         return this;
     }
 
@@ -119,11 +127,11 @@ public class CloudfrontUrlBuilder
         if (StringUtilsInternal.isNotBlank(attachmentFilename))
         {
             builder.addParameter("response-content-disposition", HttpUtils.createContentDispositionHeader("attachment", attachmentFilename));
+        }
 
-            if(attachmentFilename.toUpperCase().endsWith(".AI"))
-            {
-                builder.addParameter("response-content-type", "application/octet-stream");
-            }
+        if(StringUtilsInternal.isNotBlank(contentType))
+        {
+            builder.addParameter("response-content-type", contentType);
         }
 
         String cannedPolicy = String.format("{\"Statement\":[{\"Resource\":\"%s\",\"Condition\":{\"DateLessThan\":{\"AWS:EpochTime\":%s}}}]}", builder.toString(), expireDate.getExpiresUtcSeconds());
