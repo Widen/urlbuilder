@@ -55,6 +55,8 @@ public class S3UrlBuilder
 
     private String awsSessionToken;
 
+    private String contentType;
+
     private final UrlBuilder builder = new UrlBuilder();
 
     /**
@@ -328,6 +330,11 @@ public class S3UrlBuilder
             builder.addParameter("response-content-disposition", HttpUtils.createContentDispositionHeader("attachment", attachmentFilename));
         }
 
+        if(StringUtilsInternal.isNotBlank(contentType))
+        {
+            builder.addParameter("response-content-type", contentType);
+        }
+
         if (expireDate.isSet())
         {
             canSign();
@@ -420,6 +427,12 @@ public class S3UrlBuilder
     {
         builder.modeFullyQualified();
 
+        return this;
+    }
+
+    public S3UrlBuilder withContentType(String contentType)
+    {
+        this.contentType = contentType;
         return this;
     }
 
