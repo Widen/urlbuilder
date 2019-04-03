@@ -13,7 +13,7 @@ public class S3UrlBuilderTest
 
     private static final String awsAccount = "AKIAJKECYSQBZYJDUDSQ";
 
-    private static final String awsPrivateKey = "System.getProperty(\"awsPrivateKey\")";
+    private static final String awsPrivateKey = System.getProperty("awsPrivateKey");
 
     static
     {
@@ -58,9 +58,9 @@ public class S3UrlBuilderTest
     @Test
     public void testRegionEndointSetting()
     {
-        S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "foo/bar.jpg").inRegion(S3UrlBuilder.Region.EU_IRELAND);
+        S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "foo/bar.jpg").inRegion("eu-west-1");
 
-        assertEquals("http://bucketuno.s3-eu-west-1.amazonaws.com/foo/bar.jpg", builder.toString());
+        assertEquals("http://bucketuno.s3.eu-west-1.amazonaws.com/foo/bar.jpg", builder.toString());
     }
 
     @Test

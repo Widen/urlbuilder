@@ -19,6 +19,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -41,7 +42,7 @@ public class S3UrlBuilder
 
     private List<String> key;
 
-    private String endpoint = Region.US_STANDARD.endpoint;
+    private String endpoint = "s3.amazonaws.com";
 
     private BucketEncoding requestedBucketEncoding = BucketEncoding.DNS;
 
@@ -58,31 +59,6 @@ public class S3UrlBuilder
     private String contentType;
 
     private final UrlBuilder builder = new UrlBuilder();
-
-    /**
-     * Available S3 Regions.
-     * <p>
-     * When <code>PATH</code> encoding is used the
-     * the region must be correctly set with the location of the bucket.
-     */
-    public enum Region
-    {
-        US_STANDARD("s3.amazonaws.com"),
-        US_WEST_NORTHERN_CALIFORNIA("s3-us-west-1.amazonaws.com"),
-        US_WEST_OREGON("s3-us-west-2.amazonaws.com"),
-        EU_IRELAND("s3-eu-west-1.amazonaws.com"),
-        ASIA_PACIFIC_SINGAPORE("s3-ap-southeast-1.amazonaws.com"),
-        ASIA_PACIFIC_SYDNEY("s3-ap-southeast-2.amazonaws.com"),
-        ASIA_PACIFIC_TOKYO("s3-ap-northeast-1.amazonaws.com"),
-        SOUTH_AMERICA_SAO_PAULO("s3-sa-east-1.amazonaws.com");
-
-        String endpoint;
-
-        Region(String endpoint)
-        {
-            this.endpoint = endpoint;
-        }
-    }
 
     private enum BucketEncoding
     {
@@ -215,23 +191,21 @@ public class S3UrlBuilder
     public S3UrlBuilder withEndpoint(String endpoint)
     {
         this.endpoint = endpoint;
-
         return this;
     }
 
     /**
-     * Set Region of bucket. Default Region is US_STANDARD.
+     * Set endpoint based on AWS Region of bucket: `$REGION.s3.s3.amazonaws.com`
      *
      * @param region
      * @throws IllegalArgumentException if region is null
      * @see <a href="http://docs.amazonwebservices.com/AmazonS3/latest/dev/LocationSelection.html">S3 Location Selection Docs</a>
+     * @see <a href="https://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region">AWS Endpoint Docs</a>
      */
-    public S3UrlBuilder inRegion(Region region)
+    public S3UrlBuilder inRegion(String region)
     {
         InternalUtils.checkNotNull(region, "region");
-
-        endpoint = region.endpoint;
-
+        endpoint = "s3." + region + ".amazonaws.com";
         return this;
     }
 
@@ -461,6 +435,7 @@ public class S3UrlBuilder
     }
 
     /**
+     * AWS V2 Signature
      * http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html
      */
     private Map<String, String> signParams(Date expireTime, String canonicalResource, UrlBuilder builder)
