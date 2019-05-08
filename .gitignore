@@ -2,8 +2,7 @@
 /.classpath
 /.gradle
 /.settings
-/.idea/workspace.xml
-/.idea/dictionaries
+/.idea
 /bin
 /bintest
 /build
