@@ -18,6 +18,16 @@ Made with :heart: by Widen.
 * Fluent method-chaining API
 * More examples in [UrlBuilderTest](/test/com/widen/util/UrlBuilderTest.java)
 
+## Installation
+
+With Gradle:
+
+```
+compile 'com.widen:urlbuilder:1.3.1'
+```
+
+Other dependency managers should be similar.
+
 ## Usage
 
 ```java
