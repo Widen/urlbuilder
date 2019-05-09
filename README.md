@@ -16,7 +16,7 @@ Made with :heart: by Widen.
     * Use `usingEncoder(Encoder encoder)` to set default; `addParameter(String key, Object value, Encoder encoder)` can be used to override Encoder for a single parameter
 * Options for generation of fully-qualified, hostname relative, or protocol relative URLs
 * Fluent method-chaining API
-* More examples in [UrlBuilderTest](/src/test/java/com/widen/util/UrlBuilderTest.java)
+* More examples in [UrlBuilderTest](/src/test/java/com/widen/urlbuilder/UrlBuilderTest.java)
 
 ## Installation
 
@@ -44,7 +44,7 @@ produces `http://my.host.com/foo%20%26%20bar?1%262=3%264&a=b%26c`
 
 ## [S3](https://aws.amazon.com/s3/) Flavored UrlBuilder
 
-* [`S3UrlBuilder`](/src/com/widen/util/S3UrlBuilder.java) provides specialized functionality building for S3 URLs
+* [`S3UrlBuilder`](/src/main/java/com/widen/urlbuilder/S3UrlBuilder.java) provides specialized functionality building for S3 URLs
 * `expireIn` and `expireAt` for time-bombing S3 links
 * All bucket reference methods supported:
   * [virtual bucket](http://docs.aws.amazon.com/AmazonS3/latest/dev/VirtualHosting.html) (`http://bucket.example.com/key.txt`)
@@ -53,7 +53,7 @@ produces `http://my.host.com/foo%20%26%20bar?1%262=3%264&a=b%26c`
 * `withAttachmentFilename(String filename)` generates required `Content-Disposition` header for browser file download prompt
 
 ## [Cloudfront](https://aws.amazon.com/cloudfront/) Flavored UrlBuilder
-* [`CloudfrontUrlBuilder`](/src/com/widen/util/CloudfrontUrlBuilder.java) provides specialized functionality for building CloudFront URLs
+* [`CloudfrontUrlBuilder`](/src/main/java/com/widen/urlbuilder/CloudfrontUrlBuilder.java) provides specialized functionality for building CloudFront URLs
 * `expireIn` and `expireAt` for time-bombing CloudFront links
 * `withAttachmentFilename(String filename)` generates required `Content-Disposition` header for browser file download prompt
 
