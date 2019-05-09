@@ -11,7 +11,7 @@ Made with :heart: by Widen.
 * Automatic slash management in paths. Slashes will be de-duped or added as necessary when using addPathSegment
 * Automatic URL encoding for both path segments (preserving slashes) and query parameters
   * Encoder is user replaceable; two implementations are provided:
-    * Default [BuiltinEncoder](/src/main/java/com/widen/util/BuiltinEncoder.java) uses `java.net.UrlEncoder`
+    * Default [BuiltinEncoder](/src/main/java/com/widen/urlbuilder/BuiltinEncoder.java) uses `java.net.UrlEncoder`
     * [NoEncodingEncoder](/src/main/java/com/widen/urlbuilder/NoEncodingEncoder.java) uses text as-is
     * Use `usingEncoder(Encoder encoder)` to set default; `addParameter(String key, Object value, Encoder encoder)` can be used to override Encoder for a single parameter
 * Options for generation of fully-qualified, hostname relative, or protocol relative URLs
