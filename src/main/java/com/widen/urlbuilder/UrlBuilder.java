@@ -1,23 +1,27 @@
 /*
- * Copyright 2010 Widen Enterprises, Inc. 
+ * Copyright 2019 Widen Enterprises, Inc.
  * Madison, Wisconsin USA -- www.widen.com
- * 
+ *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
- * 
+ *
  * http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
 package com.widen.urlbuilder;
 
+import lombok.SneakyThrows;
+
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -35,8 +39,7 @@ import java.util.Map.Entry;
  *
  * @version 0.9.3
  */
-public class UrlBuilder
-{
+public class UrlBuilder {
     private boolean ssl = false;
 
     private String hostname;
@@ -61,8 +64,7 @@ public class UrlBuilder
      * @see #withHostname(String)
      * @see #withPath(String)
      */
-    public UrlBuilder()
-    {
+    public UrlBuilder() {
     }
 
     /**
@@ -73,25 +75,24 @@ public class UrlBuilder
      *
      * @throws NonParsableUrl if input is not parsable into a java.net.URL object
      */
-    public UrlBuilder(String spec)
-    {
+    public UrlBuilder(String spec) {
         URL url = parseUrlInput(spec);
 
-        usingSsl(url.getProtocol().equals("https") ? true : false);
+        usingSsl(url.getProtocol().equals("https"));
         withHostname(url.getHost());
         setPort(url.getPort());
         withPath(url.getPath());
 
         String params = url.getQuery();
-        if (params != null)
-        {
+        if (params != null) {
             String[] pairs = params.split("&");
-            for (String pair : pairs)
-            {
+            for (String pair : pairs) {
                 String[] keyValue = pair.split("=");
-                if (keyValue.length == 2)
-                {
+                if (keyValue.length == 2) {
                     addParameter(decodeValue(keyValue[0]), decodeValue(keyValue[1]));
+                }
+                else if (keyValue.length == 1) {
+                    addParameter(decodeValue(keyValue[0]), "");
                 }
             }
         }
@@ -101,22 +102,17 @@ public class UrlBuilder
         mode = GenerationMode.FULLY_QUALIFIED;
     }
 
-    private URL parseUrlInput(String spec)
-    {
-        try
-        {
+    private URL parseUrlInput(String spec) {
+        try {
             return new URL(spec);
         }
-        catch (MalformedURLException e)
-        {
+        catch (MalformedURLException e) {
             throw new NonParsableUrl(e);
         }
     }
 
-    public class NonParsableUrl extends RuntimeException
-    {
-        public NonParsableUrl(MalformedURLException e)
-        {
+    public class NonParsableUrl extends RuntimeException {
+        public NonParsableUrl(MalformedURLException e) {
             super(e);
         }
     }
@@ -124,16 +120,14 @@ public class UrlBuilder
     /**
      * Construct a UrlBuilder with a hostname and an initial path.
      */
-    public UrlBuilder(String hostname, String path)
-    {
+    public UrlBuilder(String hostname, String path) {
         this(hostname, 80, path);
     }
 
     /**
      * Construct a UrlBuilder with a hostname, port, and an initial path.
      */
-    public UrlBuilder(String hostname, int port, String path)
-    {
+    public UrlBuilder(String hostname, int port, String path) {
         withHostname(hostname);
         setPort(port);
         withPath(path);
@@ -141,42 +135,61 @@ public class UrlBuilder
     }
 
 
-    public boolean isSslEnabled()
-    {
+    public boolean isSslEnabled() {
         return ssl;
     }
 
-    public int getPort()
-    {
+    public int getPort() {
         return port;
     }
 
-    public String getHostname()
-    {
+    public String getHostname() {
         return hostname;
     }
 
-    public String getPath()
-    {
+    public String getPath() {
         return "/" + StringUtilsInternal.join(path, "/");
     }
 
-    public String getFragment()
-    {
+    public String getFragment() {
         return fragment;
     }
 
-    public GenerationMode getMode()
-    {
+    public GenerationMode getMode() {
         return mode;
     }
 
+    /**
+     * Get the query parameters as a map of multiple values.
+     *
+     * @return A map of parameter values.
+     */
+    public Map<String, List<String>> getQueryParameters() {
+        Map<String, List<String>> map = new LinkedHashMap<>();
+
+        for (QueryParam queryParam : queryParams) {
+            map.computeIfAbsent(queryParam.key, k -> new ArrayList<>())
+                .add(queryParam.value);
+        }
+
+        return map;
+    }
+
+    /**
+     * Text of query parameters as they would be append to the generated URL
+     * <ul>
+     * <li>Keys and values will be URL encoded
+     * <li>Key value pairs will be separated by an ampersand (&)
+     * </ul>
+     */
+    public String getQueryParameterString() {
+        return buildParams();
+    }
 
     /**
      * @param hostname FQDN to be used when generating fully qualified URLs
      */
-    public UrlBuilder withHostname(String hostname)
-    {
+    public UrlBuilder withHostname(String hostname) {
         this.hostname = StringUtilsInternal.trimToEmpty(hostname);
         return this;
     }
@@ -184,8 +197,7 @@ public class UrlBuilder
     /**
      * @param encoder alternative URL encoder
      */
-    public UrlBuilder usingEncoder(Encoder encoder)
-    {
+    public UrlBuilder usingEncoder(Encoder encoder) {
         this.encoder = encoder;
         return this;
     }
@@ -193,12 +205,10 @@ public class UrlBuilder
     /**
      * @param port port to be appended after the hostname on fully qualified URLs
      */
-    public void setPort(int port)
-    {
+    public void setPort(int port) {
         this.port = port;
 
-        if (port == 443)
-        {
+        if (port == 443) {
             usingSsl();
         }
     }
@@ -208,41 +218,33 @@ public class UrlBuilder
      * <p>
      * Use {@link #addPathSegment(String)} to append onto the path
      */
-    public UrlBuilder withPath(String newPath)
-    {
+    public UrlBuilder withPath(String newPath) {
         path = makePathSegments(newPath, true);
 
         return this;
     }
 
-    public UrlBuilder withPathEncoded(String newPath)
-    {
+    public UrlBuilder withPathEncoded(String newPath) {
         path = makePathSegments(newPath, false);
 
         return this;
     }
 
-    List<String> makePathSegments(String in, boolean encodeSegments)
-    {
+    List<String> makePathSegments(String in, boolean encodeSegments) {
         ArrayList<String> list = new ArrayList<String>();
 
-        if (in == null)
-        {
+        if (in == null) {
             return list;
         }
 
         String[] split = in.split("/");
 
-        for (String s : split)
-        {
-            if (StringUtilsInternal.isNotBlank(s))
-            {
-                if (encodeSegments)
-                {
+        for (String s : split) {
+            if (StringUtilsInternal.isNotBlank(s)) {
+                if (encodeSegments) {
                     list.add(encodeValue(s));
                 }
-                else
-                {
+                else {
                     list.add(s);
                 }
             }
@@ -254,8 +256,7 @@ public class UrlBuilder
     /**
      * URL protocol will be "https"
      */
-    public UrlBuilder usingSsl()
-    {
+    public UrlBuilder usingSsl() {
         ssl = true;
         return this;
     }
@@ -263,8 +264,7 @@ public class UrlBuilder
     /**
      * URL protocol will be "https" when useSsl = true
      */
-    public UrlBuilder usingSsl(boolean useSsl)
-    {
+    public UrlBuilder usingSsl(boolean useSsl) {
         ssl = useSsl;
         return this;
     }
@@ -277,10 +277,8 @@ public class UrlBuilder
      *
      * @param value Text to append to the path segment of the URL
      */
-    public UrlBuilder addPathSegment(String value)
-    {
-        if (StringUtilsInternal.isNotBlank(value))
-        {
+    public UrlBuilder addPathSegment(String value) {
+        if (StringUtilsInternal.isNotBlank(value)) {
             path.addAll(makePathSegments(value, true));
         }
 
@@ -293,10 +291,8 @@ public class UrlBuilder
      * @param value
      * @return
      */
-    public UrlBuilder addPrefixedPathSegment(String value)
-    {
-        if (StringUtilsInternal.isNotBlank(value))
-        {
+    public UrlBuilder addPrefixedPathSegment(String value) {
+        if (StringUtilsInternal.isNotBlank(value)) {
             path.addAll(0, makePathSegments(value, true));
         }
 
@@ -306,8 +302,7 @@ public class UrlBuilder
     /**
      * By default, the path will <b>not</b> end with a trailing slash.
      */
-    public UrlBuilder includeTrailingSlash()
-    {
+    public UrlBuilder includeTrailingSlash() {
         trailingPathSlash = true;
         return this;
     }
@@ -315,13 +310,11 @@ public class UrlBuilder
     /**
      * Append parameter to the query string.
      *
-     * @param key   text for the query parameter key
+     * @param key text for the query parameter key
      * @param value toString() result will be added as the value
      */
-    public UrlBuilder addParameter(String key, Object value)
-    {
-        if (StringUtilsInternal.isNotBlank(key))
-        {
+    public UrlBuilder addParameter(String key, Object value) {
+        if (StringUtilsInternal.isNotBlank(key)) {
             queryParams.add(new QueryParam(key, value != null ? value.toString() : null, encoder));
         }
 
@@ -331,14 +324,12 @@ public class UrlBuilder
     /**
      * Append parameter to the query string.
      *
-     * @param key     text for the query parameter key
-     * @param value   toString() result will be added as the value
+     * @param key text for the query parameter key
+     * @param value toString() result will be added as the value
      * @param encoder encoder to use for this value
      */
-    public UrlBuilder addParameter(String key, Object value, Encoder encoder)
-    {
-        if (StringUtilsInternal.isNotBlank(key))
-        {
+    public UrlBuilder addParameter(String key, Object value, Encoder encoder) {
+        if (StringUtilsInternal.isNotBlank(key)) {
             queryParams.add(new QueryParam(key, value != null ? value.toString() : null, encoder));
         }
 
@@ -350,12 +341,10 @@ public class UrlBuilder
      * will be escaped when added.
      *
      * @param params String key = text for the query parameter key<br/>
-     *               Object value = toString() result at the time of  will be added as the value
+     * Object value = toString() result at the time of  will be added as the value
      */
-    public UrlBuilder addParameters(Map<String, ?> params)
-    {
-        for (Entry<String, ?> e : params.entrySet())
-        {
+    public UrlBuilder addParameters(Map<String, ?> params) {
+        for (Entry<String, ?> e : params.entrySet()) {
             addParameter(e.getKey(), e.getValue().toString());
         }
         return this;
@@ -364,8 +353,7 @@ public class UrlBuilder
     /**
      * Clear any previously added parameters.
      */
-    public UrlBuilder clearParameters()
-    {
+    public UrlBuilder clearParameters() {
         queryParams.clear();
 
         return this;
@@ -374,18 +362,14 @@ public class UrlBuilder
     /**
      * Remove previously added query parameters
      */
-    public UrlBuilder clearParameter(String... params)
-    {
-        if (params != null)
-        {
+    public UrlBuilder clearParameter(String... params) {
+        if (params != null) {
             List<String> remove = Arrays.asList(params);
 
-            for (Iterator<QueryParam> iter = queryParams.iterator(); iter.hasNext(); )
-            {
+            for (Iterator<QueryParam> iter = queryParams.iterator(); iter.hasNext(); ) {
                 QueryParam next = iter.next();
 
-                if (remove.contains(next.key))
-                {
+                if (remove.contains(next.key)) {
                     iter.remove();
                 }
             }
@@ -395,24 +379,10 @@ public class UrlBuilder
     }
 
     /**
-     * Text of query parameters as they would be append to the generated URL
-     * <ul>
-     * <li>Keys and values will be URL encoded
-     * <li>Key value pairs will be separated by an ampersand (&)
-     * </ul>
-     */
-    public String getQueryParameterString()
-    {
-        return buildParams();
-    }
-
-    /**
      * @param fragment text to appear after the '#' in the generated URL. Will not be URLEncoded.
      */
-    public UrlBuilder withFragment(String fragment)
-    {
-        if (StringUtilsInternal.isNotBlank(fragment))
-        {
+    public UrlBuilder withFragment(String fragment) {
+        if (StringUtilsInternal.isNotBlank(fragment)) {
             this.fragment = fragment;
         }
         return this;
@@ -421,8 +391,7 @@ public class UrlBuilder
     /**
      * Set generation mode to Protocol Relative; e.g. <code>"//my.host.com/foo/bar.html"</code>
      */
-    public UrlBuilder modeProtocolRelative()
-    {
+    public UrlBuilder modeProtocolRelative() {
         mode = GenerationMode.PROTOCOL_RELATIVE;
         return this;
     }
@@ -430,19 +399,37 @@ public class UrlBuilder
     /**
      * Set generation mode to Hostname Relative; e.g. <code>"/foo/bar.html"</code>
      */
-    public UrlBuilder modeHostnameRelative()
-    {
+    public UrlBuilder modeHostnameRelative() {
         mode = GenerationMode.HOSTNAME_RELATIVE;
         return this;
     }
 
     /**
-     * Set generation mode to Fully Qualified. This is the default mode; e.g. <code>"http://my.host.com/foo/bar.html"</code>
+     * Set generation mode to Fully Qualified. This is the default mode; e.g. <code>"http://my.host.com/foo/bar
+     * .html"</code>
      */
-    public UrlBuilder modeFullyQualified()
-    {
+    public UrlBuilder modeFullyQualified() {
         mode = GenerationMode.FULLY_QUALIFIED;
         return this;
+    }
+
+    /**
+     * Construct a {@link URI} for the current configuration.
+     *
+     * @see #toString()
+     */
+    public URI toURI() {
+        return URI.create(toString());
+    }
+
+    /**
+     * Construct a {@link URL} for the current configuration.
+     *
+     * @see #toString()
+     */
+    @SneakyThrows
+    public URL toURL() {
+        return toURI().toURL();
     }
 
     /**
@@ -455,75 +442,60 @@ public class UrlBuilder
      * @see #modeProtocolRelative()
      */
     @Override
-    public String toString()
-    {
+    public String toString() {
         StringBuilder url = new StringBuilder();
 
-        if (GenerationMode.FULLY_QUALIFIED.equals(mode) && StringUtilsInternal.isBlank(hostname))
-        {
+        if (GenerationMode.FULLY_QUALIFIED.equals(mode) && StringUtilsInternal.isBlank(hostname)) {
             throw new IllegalArgumentException("Hostname cannot be blank when generation mode is FULLY_QUALIFIED.");
         }
 
-        if (GenerationMode.FULLY_QUALIFIED.equals(mode))
-        {
-            if (ssl)
-            {
-                url.append("https://" + hostname);
+        if (GenerationMode.FULLY_QUALIFIED.equals(mode)) {
+            if (ssl) {
+                url.append("https://").append(hostname);
             }
-            else
-            {
-                url.append("http://" + hostname);
+            else {
+                url.append("http://").append(hostname);
             }
         }
-        else if (GenerationMode.PROTOCOL_RELATIVE.equals(mode))
-        {
-            url.append("//" + hostname);
+        else if (GenerationMode.PROTOCOL_RELATIVE.equals(mode)) {
+            url.append("//").append(hostname);
         }
 
-        if (!GenerationMode.HOSTNAME_RELATIVE.equals(mode))
-        {
-            if (port != 80 && port != 443 && port > 0)
-            {
-                url.append(":" + port);
+        if (!GenerationMode.HOSTNAME_RELATIVE.equals(mode)) {
+            if (port != 80 && port != 443 && port > 0) {
+                url.append(":").append(port);
             }
         }
 
         url.append("/");
 
-        if (!path.isEmpty())
-        {
+        if (!path.isEmpty()) {
             url.append(StringUtilsInternal.join(path, "/"));
 
-            if (trailingPathSlash)
-            {
+            if (trailingPathSlash) {
                 url.append("/");
             }
         }
 
-        if (!queryParams.isEmpty())
-        {
+        if (!queryParams.isEmpty()) {
             url.append("?");
             url.append(buildParams());
         }
 
-        if (StringUtilsInternal.isNotBlank(fragment))
-        {
-            url.append("#" + fragment);
+        if (StringUtilsInternal.isNotBlank(fragment)) {
+            url.append("#").append(fragment);
         }
 
         return url.toString();
     }
 
-    private String buildParams()
-    {
+    private String buildParams() {
         StringBuilder params = new StringBuilder();
 
         boolean first = true;
 
-        for (QueryParam qp : queryParams)
-        {
-            if (!first)
-            {
+        for (QueryParam qp : queryParams) {
+            if (!first) {
                 params.append("&");
             }
 
@@ -535,60 +507,50 @@ public class UrlBuilder
         return params.toString();
     }
 
-    private String encodeValue(String value)
-    {
-        if (value == null)
-        {
+    private String encodeValue(String value) {
+        if (value == null) {
             return "";
         }
 
         return encoder.encode(value);
     }
 
-    private String decodeValue(String value)
-    {
-        if (value == null)
-        {
+    private String decodeValue(String value) {
+        if (value == null) {
             return "";
         }
 
         return encoder.decode(value);
     }
 
-    public enum GenerationMode
-    {
+    public enum GenerationMode {
         FULLY_QUALIFIED,
         PROTOCOL_RELATIVE,
         HOSTNAME_RELATIVE
     }
 
-    class QueryParam
-    {
+    class QueryParam {
         String key;
         String value;
         Encoder encoder;
 
-        QueryParam(String key, String value, Encoder encoder)
-        {
+        QueryParam(String key, String value, Encoder encoder) {
             this.key = key;
             this.value = value;
             this.encoder = encoder;
         }
 
         @Override
-        public String toString()
-        {
+        public String toString() {
             StringBuilder sb = new StringBuilder();
 
             sb.append(encoder.encode(key));
 
-            if (StringUtilsInternal.isNotBlank(value))
-            {
+            if (StringUtilsInternal.isNotBlank(value)) {
                 sb.append("=").append(encoder.encode(value));
             }
 
             return sb.toString();
         }
     }
-
 }
