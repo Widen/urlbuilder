@@ -1,6 +1,5 @@
 package com.widen.util;
 
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.security.PrivateKey;
 import java.util.Date;
@@ -19,8 +18,8 @@ public class CloudfrontUrlBuilderTest
     @Before
     public void setup() throws IOException
     {
-        pem = CloudfrontPrivateKeyUtils.fromPemString(IOUtils.toString(new FileInputStream("test-resources/test-cf.pem")));
-        der = CloudfrontPrivateKeyUtils.fromDerBinary(new FileInputStream("test-resources/test-cf.der"));
+        pem = CloudfrontPrivateKeyUtils.fromPemString(IOUtils.toString(getClass().getResourceAsStream("/test-cf.pem")));
+        der = CloudfrontPrivateKeyUtils.fromDerBinary(getClass().getResourceAsStream("/test-cf.der"));
     }
 
     @Test
