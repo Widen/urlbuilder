@@ -9,18 +9,18 @@ steps:
         always-pull: true
         user: root
 
-#  - wait
-#
-#  - label: ":maven: Publish Artifacts"
-#    branches: "*.*.*"
-#    command: "./gradlew bintrayUpload"
-#    agents:
-#      queue: builder
-#    plugins:
-#      docker#v1.1.1:
-#        image: gradle:4.10
-#        always-pull: true
-#        user: root
-#        environment:
-#          - BINTRAY_USER
-#          - BINTRAY_API_KEY
+  - wait
+
+  - label: ":maven: Publish Artifacts"
+    branches: "*.*.*"
+    command: "./gradlew bintrayUpload"
+    agents:
+      queue: builder
+    plugins:
+      docker#v1.1.1:
+        image: gradle:4.10
+        always-pull: true
+        user: root
+        environment:
+          - BINTRAY_USER
+          - BINTRAY_API_KEY

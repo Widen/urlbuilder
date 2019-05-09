@@ -1,10 +1,14 @@
 plugins {
+    id 'idea'
     id 'java'
+    id 'maven-publish'
+    id 'signing'
+    id 'com.jfrog.bintray' version '1.8.4'
     id 'com.widen.versioning' version '0.4.1'
 }
 
 group = 'com.widen'
-ext.repo = 'https://github.com/Widen/urlbuilder'
+ext.repo = 'https://github.com/Widen/' + project.name
 
 sourceCompatibility = 1.6
 targetCompatibility = 1.6
@@ -21,7 +25,82 @@ dependencies {
     testCompile group: 'commons-io', name: 'commons-io', version: '2.4'
 }
 
+bintray {
+    user = findProperty('bintrayUser') ?: System.getenv('BINTRAY_USER')
+    key = findProperty('bintrayApiKey') ?: System.getenv('BINTRAY_API_KEY')
+}
+
 task sourcesJar(type: Jar) {
     from sourceSets.main.allSource
-    classifier = 'sources'
+    classifier 'sources'
+}
+
+task javadocJar(type: Jar) {
+    from javadoc
+    classifier 'javadoc'
+}
+
+bintray {
+    publications = ['maven']
+    publish = true
+    pkg {
+        repo = 'oss'
+        name = project.name
+        userOrg = 'widen'
+        desc = project.description
+        websiteUrl = project.ext.repo
+        issueTrackerUrl = project.ext.repo + '/issues'
+        vcsUrl = project.ext.repo + '.git'
+        licenses = ['Apache-2.0']
+        publicDownloadNumbers = true
+        version {
+            name = project.version
+            gpg {
+                sign = true
+            }
+        }
+    }
+}
+
+bintrayUpload.doFirst {
+    bintrayUpload.versionName = project.version
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+            artifact sourcesJar
+            artifact javadocJar
+            pom {
+                name = project.name
+                description = project.description
+                url = project.ext.repo
+                licenses {
+                    license {
+                        name = 'The Apache Software License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        distribution = 'repo'
+                    }
+                }
+                developers {
+                    developer {
+                        id = 'uriahcarpenter'
+                        name = 'Uriah Carpenter'
+                        email = 'uriah@widen.com'
+                    }
+                    developer {
+                        id = 'scoakley'
+                        name = 'Stephen Coakley'
+                        email = 'scoakley@widen.com'
+                    }
+                }
+                scm {
+                    url = project.ext.repo + '.git'
+                    connection = "scm:git@github.com:Widen/${project.name}.git"
+                    developerConnection = "scm:git@github.com:Widen/${project.name}.git"
+                }
+            }
+        }
+    }
 }
