@@ -20,6 +20,7 @@ import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,13 +47,13 @@ public class UrlBuilder {
 
     private int port;
 
-    private List<String> path = new ArrayList<String>();
+    private List<String> path = new ArrayList<>();
 
     private boolean trailingPathSlash = false;
 
     private String fragment;
 
-    List<QueryParam> queryParams = new ArrayList<QueryParam>();
+    List<QueryParam> queryParams = new ArrayList<>();
 
     private GenerationMode mode = GenerationMode.HOSTNAME_RELATIVE;
 
@@ -134,7 +135,6 @@ public class UrlBuilder {
         mode = GenerationMode.FULLY_QUALIFIED;
     }
 
-
     public boolean isSslEnabled() {
         return ssl;
     }
@@ -147,8 +147,22 @@ public class UrlBuilder {
         return hostname;
     }
 
+    /**
+     * Get the full path string of the URL.
+     *
+     * @return The URL path.
+     */
     public String getPath() {
         return "/" + StringUtilsInternal.join(path, "/");
+    }
+
+    /**
+     * Get the path segments in the URL. This effectively returns the path split on "/" in an efficient way.
+     *
+     * @return A read-only list of path segments.
+     */
+    public List<String> getPathSegments() {
+        return Collections.unmodifiableList(path);
     }
 
     public String getFragment() {

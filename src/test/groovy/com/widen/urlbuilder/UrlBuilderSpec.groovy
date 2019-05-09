@@ -30,6 +30,21 @@ class UrlBuilderSpec extends Specification {
         ]
     }
 
+    def "Path segments are parsed correctly"() {
+        when:
+        def builder = new UrlBuilder(url)
+
+        then:
+        builder.path == path
+        builder.pathSegments == segments
+
+        where:
+        url                            | path       | segments
+        "http://my.host.com"           | "/"        | []
+        "http://my.host.com/foo/bar"   | "/foo/bar" | ["foo", "bar"]
+        "http://my.host.com/foo//bar/" | "/foo/bar" | ["foo", "bar"]
+    }
+
     def "Query parameters as map"() {
         when:
         def builder = new UrlBuilder('https://my.host.com/bar?a=x&b=2&c=3&c=4&a&d#foo')
