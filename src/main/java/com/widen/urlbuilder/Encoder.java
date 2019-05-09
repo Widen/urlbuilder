@@ -1,4 +1,4 @@
-package com.widen.util;
+package com.widen.urlbuilder;
 
 /**
  * GET URLs require conversion to preserve special characters. By default the {@link BuiltinEncoder} is used.

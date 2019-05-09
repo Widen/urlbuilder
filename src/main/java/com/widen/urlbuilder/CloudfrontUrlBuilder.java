@@ -1,4 +1,4 @@
-package com.widen.util;
+package com.widen.urlbuilder;
 
 import java.security.PrivateKey;
 import java.security.Signature;

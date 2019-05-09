@@ -1,4 +1,4 @@
-package com.widen.util;
+package com.widen.urlbuilder;
 
 import java.util.Date;
 import java.util.concurrent.TimeUnit;

@@ -1,4 +1,4 @@
-package com.widen.util;
+package com.widen.urlbuilder;
 
 /**
  *  Encoder that performs no encoding -- simply passing the text value back unmodified.

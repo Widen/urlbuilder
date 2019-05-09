@@ -1,4 +1,4 @@
-package com.widen.util;
+package com.widen.urlbuilder;
 
 import java.io.InputStream;
 import java.io.StringReader;
