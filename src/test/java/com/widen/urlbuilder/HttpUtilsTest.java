@@ -14,6 +14,22 @@ public class HttpUtilsTest
             HttpUtils.createContentDispositionHeader("inline", "foo.jpg")
         );
         assertEquals(
+            "inline; filename=\"hello world.jpg\"",
+            HttpUtils.createContentDispositionHeader("inline", "hello world.jpg")
+        );
+        assertEquals(
+            "inline; filename=\"helloworld.jpg\"; filename*=UTF-8''hello%22world.jpg",
+            HttpUtils.createContentDispositionHeader("inline", "hello\"world.jpg")
+        );
+        assertEquals(
+            "inline; filename=\"helloworld.jpg\"; filename*=UTF-8''hello%5Cworld.jpg",
+            HttpUtils.createContentDispositionHeader("inline", "hello\\world.jpg")
+        );
+        assertEquals(
+            "inline; filename=\"helloworld.jpg\"; filename*=UTF-8''hello%25world.jpg",
+            HttpUtils.createContentDispositionHeader("inline", "hello%world.jpg")
+        );
+        assertEquals(
             "attachment; filename=\"+oo.jpg\"; filename*=UTF-8''%2B%C6%92oo.jpg",
             HttpUtils.createContentDispositionHeader("attachment", "+ƒoo.jpg")
         );
