@@ -2,7 +2,7 @@
 
 [![Build Status](https://badge.buildkite.com/df4ba6b2e54d481d385b7f71e69090761e938491a165fbbde4.svg)](https://buildkite.com/widen/urlbuilder)
 
-Utility class for constructing syntactically correct HTTP URLs using a fluent method-chaining API. It strives simply to be more robust then manually constructing URLs by string concatenation.
+Utility class for constructing syntactically correct HTTP URLs using a fluent method-chaining API. It strives simply to be more robust than manually constructing URLs by string concatenation.
 
 Made with :heart: by Widen.
 
