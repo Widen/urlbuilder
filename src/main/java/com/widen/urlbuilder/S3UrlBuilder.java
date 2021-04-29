@@ -29,7 +29,7 @@ import javax.crypto.spec.SecretKeySpec;
  * <p>
  * <p><b>Typical usage:</b>
  * <code>new S3UrlBuilder("urlbuildertests.widen.com", "cat.jpeg").expireIn(1, TimeUnit.HOURS).usingCredentials(awsKey, awsPrivateKey).toString()</code>
- * <b>produces</b> <code>http://urlbuildertests.widen.com.s3.amazonaws.com/cat.jpeg?Expires=1522540800&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Signature=fHj68yJqZ1ImRrsgogBHZdb4Ceo%3D</code>
+ * <b>produces</b> <code>http://urlbuildertests.widen.com.s3.amazonaws.com/cat.jpeg?Expires=1522540800&amp;AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&amp;Signature=fHj68yJqZ1ImRrsgogBHZdb4Ceo%3D</code>
  * <p>
  * <p>The methods {@link #usingBucketVirtualHost}, {@link #usingBucketInPath}, {@link #usingBucketInHostname},
  * control where the bucket name is encoded into the URL.
@@ -181,7 +181,7 @@ public class S3UrlBuilder
     }
 
     /**
-     * Set a custom endpoint for the S3 service.<br />
+     * Set a custom endpoint for the S3 service.
      * <p>
      * When using Amazon services you should use #inRegion() instead of this method.
      * This method is only necessary when using S3 API compatible services like <a href="http://ceph.com/">CEPH</a>
