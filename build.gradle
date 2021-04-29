@@ -4,8 +4,8 @@ plugins {
     id 'java'
     id 'maven-publish'
     id 'signing'
-    id 'com.jfrog.bintray' version '1.8.4'
     id 'com.widen.versioning' version '0.4.1'
+    id 'io.github.gradle-nexus.publish-plugin' version '1.1.0'
 }
 
 group = 'com.widen'
@@ -15,7 +15,7 @@ sourceCompatibility = 1.8
 targetCompatibility = 1.8
 
 repositories {
-    jcenter()
+    mavenCentral()
 }
 
 dependencies {
@@ -34,11 +34,6 @@ dependencies {
     testCompile 'org.spockframework:spock-core:1.1-groovy-2.4'
 }
 
-bintray {
-    user = findProperty('bintrayUser') ?: System.getenv('BINTRAY_USER')
-    key = findProperty('bintrayApiKey') ?: System.getenv('BINTRAY_API_KEY')
-}
-
 task sourcesJar(type: Jar) {
     from sourceSets.main.allSource
     classifier 'sources'
@@ -49,30 +44,10 @@ task javadocJar(type: Jar) {
     classifier 'javadoc'
 }
 
-bintray {
-    publications = ['maven']
-    publish = true
-    pkg {
-        repo = 'oss'
-        name = project.name
-        userOrg = 'widen'
-        desc = project.description
-        websiteUrl = project.ext.repo
-        issueTrackerUrl = project.ext.repo + '/issues'
-        vcsUrl = project.ext.repo + '.git'
-        licenses = ['Apache-2.0']
-        publicDownloadNumbers = true
-        version {
-            name = project.version
-            gpg {
-                sign = true
-            }
-        }
+nexusPublishing {
+    repositories {
+        sonatype()
     }
-}
-
-bintrayUpload.doFirst {
-    bintrayUpload.versionName = project.version
 }
 
 publishing {
@@ -92,6 +67,10 @@ publishing {
                         distribution = 'repo'
                     }
                 }
+                organization {
+                    name = 'Widen Enterprises, Inc'
+                    url = 'https://www.widen.com'
+                }
                 developers {
                     developer {
                         id = 'uriahcarpenter'
@@ -106,10 +85,15 @@ publishing {
                 }
                 scm {
                     url = project.ext.repo + '.git'
-                    connection = "scm:git@github.com:Widen/${project.name}.git"
-                    developerConnection = "scm:git@github.com:Widen/${project.name}.git"
+                    connection = project.ext.repo.replace('https://github.com/', 'scm:git@github.com:') + '.git'
+                    developerConnection = connection
                 }
             }
         }
     }
+}
+
+signing {
+    useInMemoryPgpKeys(findProperty('signingKey'), findProperty('signingPassword'))
+    sign publishing.publications.maven
 }

@@ -71,7 +71,6 @@ public class UrlBuilder {
     /**
      * Construct a UrlBuilder from a String.
      * <p>
-     * <p/>
      * {@link java.net.URL java.net.URL} is used to parse the input.
      *
      * @throws NonParsableUrl if input is not parsable into a java.net.URL object
@@ -193,7 +192,7 @@ public class UrlBuilder {
      * Text of query parameters as they would be append to the generated URL
      * <ul>
      * <li>Keys and values will be URL encoded
-     * <li>Key value pairs will be separated by an ampersand (&)
+     * <li>Key value pairs will be separated by an ampersand (&amp;)
      * </ul>
      */
     public String getQueryParameterString() {
@@ -354,7 +353,7 @@ public class UrlBuilder {
      * Append a Map of parameters to the query string. Both keys and values
      * will be escaped when added.
      *
-     * @param params String key = text for the query parameter key<br/>
+     * @param params String key = text for the query parameter key<br>
      * Object value = toString() result at the time of  will be added as the value
      */
     public UrlBuilder addParameters(Map<String, ?> params) {
