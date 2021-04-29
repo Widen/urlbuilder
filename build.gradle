@@ -9,6 +9,7 @@ plugins {
 }
 
 group = 'com.widen'
+description = 'Utility class for constructing syntactically correct HTTP URLs using a fluent method-chaining API'
 ext.repo = 'https://github.com/Widen/' + project.name
 
 sourceCompatibility = 1.8
