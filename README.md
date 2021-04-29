@@ -1,6 +1,7 @@
 # UrlBuilder
 
-[![Build Status](https://badge.buildkite.com/df4ba6b2e54d481d385b7f71e69090761e938491a165fbbde4.svg)](https://buildkite.com/widen/urlbuilder)
+[![Build Status](https://github.com/Widen/urlbuilder/actions/workflows/ci.yml/badge.svg)](https://github.com/Widen/urlbuilder/actions/workflows/ci.yml)
+![Maven Central](https://img.shields.io/maven-central/v/com.widen/urlbuilder)
 
 Utility class for constructing syntactically correct HTTP URLs using a fluent method-chaining API. It strives simply to be more robust than manually constructing URLs by string concatenation.
 
@@ -23,7 +24,7 @@ Made with :heart: by Widen.
 With Gradle:
 
 ```
-compile 'com.widen:urlbuilder:1.3.1'
+compile 'com.widen:urlbuilder:{version}'
 ```
 
 Other dependency managers should be similar.
@@ -49,7 +50,7 @@ produces `http://my.host.com/foo%20%26%20bar?1%262=3%264&a=b%26c`
 * All bucket reference methods supported:
   * [virtual bucket](http://docs.aws.amazon.com/AmazonS3/latest/dev/VirtualHosting.html) (`http://bucket.example.com/key.txt`)
   * [bucket in path](http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingBucket.html#access-bucket-intro) (`https://s3.amazonaws.com/bucket.example.com/key.txt`)
-  * hostname (`http://bucket.example.com.s3.amazonaws.com/key.txt`) 
+  * hostname (`http://bucket.example.com.s3.amazonaws.com/key.txt`)
 * `withAttachmentFilename(String filename)` generates required `Content-Disposition` header for browser file download prompt
 
 ## [Cloudfront](https://aws.amazon.com/cloudfront/) Flavored UrlBuilder
