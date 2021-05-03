@@ -1,7 +1,7 @@
 # UrlBuilder
 
 [![Build Status](https://github.com/Widen/urlbuilder/actions/workflows/ci.yml/badge.svg)](https://github.com/Widen/urlbuilder/actions/workflows/ci.yml)
-![Maven Central](https://img.shields.io/maven-central/v/com.widen/urlbuilder)
+[![Maven Central](https://img.shields.io/maven-central/v/com.widen/urlbuilder)](https://search.maven.org/artifact/com.widen/urlbuilder)
 
 Utility class for constructing syntactically correct HTTP URLs using a fluent method-chaining API. It strives simply to be more robust than manually constructing URLs by string concatenation.
 
