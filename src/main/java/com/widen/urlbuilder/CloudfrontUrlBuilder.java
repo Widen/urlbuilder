@@ -1,7 +1,9 @@
 package com.widen.urlbuilder;
 
+import java.nio.charset.StandardCharsets;
 import java.security.PrivateKey;
 import java.security.Signature;
+import java.util.Base64;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.LinkedHashMap;
@@ -207,10 +209,10 @@ public class CloudfrontUrlBuilder
         {
             try
             {
-                signer.update(text.getBytes("UTF-8"));
+                signer.update(text.getBytes(StandardCharsets.UTF_8));
                 byte[] bytes = signer.sign();
 
-                String encodedBytes = Base64.encodeBytes(bytes);
+                String encodedBytes = Base64.getEncoder().encodeToString(bytes);
                 return encodedBytes.replace("+", "-").replace("=", "_").replace("/", "~");
             }
             catch (Exception e)

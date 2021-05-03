@@ -13,7 +13,9 @@
  */
 package com.widen.urlbuilder;
 
+import java.nio.charset.StandardCharsets;
 import java.security.SignatureException;
+import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -609,7 +611,7 @@ public class S3UrlBuilder
             {
                 Mac mac = Mac.getInstance("HmacSHA1");
                 mac.init(new SecretKeySpec(key.getBytes(), "HmacSHA1"));
-                return Base64.encodeBytes(mac.doFinal(data.getBytes("UTF-8")));
+                return Base64.getEncoder().encodeToString(mac.doFinal(data.getBytes(StandardCharsets.UTF_8)));
             }
             catch (Exception e)
             {
