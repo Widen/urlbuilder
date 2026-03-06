@@ -101,6 +101,9 @@ publishing {
 }
 
 signing {
-    useInMemoryPgpKeys(findProperty("signingKey") as String?, findProperty("signingPassword") as String?)
+    val signingKey = findProperty("signingKey") as String?
+    val signingPassword = findProperty("signingPassword") as String?
+    useInMemoryPgpKeys(signingKey, signingPassword)
     sign(publishing.publications["maven"])
+    isRequired = signingKey != null && signingPassword != null
 }
