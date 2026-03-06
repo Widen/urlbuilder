@@ -14,6 +14,15 @@
 package com.widen.urlbuilder;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -314,6 +323,49 @@ class UrlBuilderTest
         builder.addParameter("key1", "");
         builder.addParameter("key2", "c");
         assertEquals("http://my.host.com/foo.jpg?key0&key1&key2=c", builder.toString());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "http://my.host.com:8080/bar?a=b#foo",
+        "http://my.host.com/bar?a=b#foo",
+        "https://my.host.com/bar?a=b#foo",
+        "https://my.host.com:8080/bar?a=b&c=d"
+    })
+    void roundTripParseAndToString(String url)
+    {
+        UrlBuilder builder = new UrlBuilder(url);
+        assertEquals(url, builder.toString());
+    }
+
+    @ParameterizedTest
+    @MethodSource("pathSegmentTestCases")
+    void pathSegmentsAreParsedCorrectly(String url, String expectedPath, List<String> expectedSegments)
+    {
+        UrlBuilder builder = new UrlBuilder(url);
+        assertEquals(expectedPath, builder.getPath());
+        assertEquals(expectedSegments, builder.getPathSegments());
+    }
+
+    static Stream<Arguments> pathSegmentTestCases()
+    {
+        return Stream.of(
+            Arguments.of("http://my.host.com", "/", Collections.emptyList()),
+            Arguments.of("http://my.host.com/foo/bar", "/foo/bar", Arrays.asList("foo", "bar")),
+            Arguments.of("http://my.host.com/foo//bar/", "/foo/bar", Arrays.asList("foo", "bar"))
+        );
+    }
+
+    @Test
+    void queryParametersAsMap()
+    {
+        UrlBuilder builder = new UrlBuilder("https://my.host.com/bar?a=x&b=2&c=3&c=4&a&d#foo");
+
+        assertEquals(4, builder.getQueryParameters().size());
+        assertEquals(Arrays.asList("x", ""), builder.getQueryParameters().get("a"));
+        assertEquals(Arrays.asList("2"), builder.getQueryParameters().get("b"));
+        assertEquals(Arrays.asList("3", "4"), builder.getQueryParameters().get("c"));
+        assertEquals(Arrays.asList(""), builder.getQueryParameters().get("d"));
     }
 
 }
