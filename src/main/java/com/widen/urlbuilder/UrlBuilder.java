@@ -13,8 +13,6 @@
  */
 package com.widen.urlbuilder;
 
-import lombok.SneakyThrows;
-
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
@@ -440,9 +438,12 @@ public class UrlBuilder {
      *
      * @see #toString()
      */
-    @SneakyThrows
     public URL toURL() {
-        return toURI().toURL();
+        try {
+            return toURI().toURL();
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
