@@ -38,6 +38,15 @@ dependencies {
     testImplementation("org.spockframework:spock-core:1.1-groovy-2.4")
 }
 
+tasks.withType<JavaCompile>().configureEach {
+    options.release.set(8)
+    options.encoding = "UTF-8"
+}
+java {
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
+}
+
 val sourcesJar by tasks.registering(Jar::class) {
     from(sourceSets.main.get().allSource)
     archiveClassifier.set("sources")
