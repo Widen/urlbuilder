@@ -1,6 +1,5 @@
 plugins {
     `java-library`
-    groovy
     `maven-publish`
     signing
     id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
@@ -31,10 +30,6 @@ dependencies {
     implementation("org.bouncycastle:bcprov-jdk15to18:1.80")
     implementation("org.bouncycastle:bcpkix-jdk15to18:1.80")
 
-    // JUnit 4 (temporary, for vintage engine compatibility)
-    testImplementation("junit:junit:4.8.2")
-    testRuntimeOnly("org.junit.vintage:junit-vintage-engine")
-
     // JUnit 5
     testImplementation(platform("org.junit:junit-bom:5.13.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -43,12 +38,6 @@ dependencies {
     // Other test dependencies
     testImplementation("commons-io:commons-io:2.4")
     testImplementation("org.slf4j:slf4j-simple:1.7.25")
-
-    // Spock (temporary, until UrlBuilderSpec is converted)
-    testImplementation("org.codehaus.groovy:groovy-all:2.4.9")
-    testImplementation("org.spockframework:spock-core:1.1-groovy-2.4")
-    testImplementation("cglib:cglib-nodep:3.2.5")
-    testImplementation("org.objenesis:objenesis:2.6")
 }
 
 tasks.test {
