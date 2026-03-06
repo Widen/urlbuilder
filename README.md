@@ -23,8 +23,8 @@ Made with :heart: by Widen.
 
 With Gradle:
 
-```
-compile 'com.widen:urlbuilder:{version}'
+```kotlin
+implementation("com.widen:urlbuilder:{version}")
 ```
 
 Other dependency managers should be similar.
