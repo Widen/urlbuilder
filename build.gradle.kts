@@ -16,6 +16,8 @@ java {
     toolchain {
         languageVersion.set(JavaLanguageVersion.of(8))
     }
+    withSourcesJar()
+    withJavadocJar()
 }
 
 repositories {
@@ -38,25 +40,6 @@ dependencies {
     testImplementation("org.spockframework:spock-core:1.1-groovy-2.4")
 }
 
-tasks.withType<JavaCompile>().configureEach {
-    options.release.set(8)
-    options.encoding = "UTF-8"
-}
-java {
-    sourceCompatibility = JavaVersion.VERSION_1_8
-    targetCompatibility = JavaVersion.VERSION_1_8
-}
-
-val sourcesJar by tasks.registering(Jar::class) {
-    from(sourceSets.main.get().allSource)
-    archiveClassifier.set("sources")
-}
-
-val javadocJar by tasks.registering(Jar::class) {
-    from(tasks.javadoc)
-    archiveClassifier.set("javadoc")
-}
-
 nexusPublishing {
     repositories {
         sonatype {
@@ -70,8 +53,6 @@ publishing {
     publications {
         create<MavenPublication>("maven") {
             from(components["java"])
-            artifact(sourcesJar)
-            artifact(javadocJar)
             pom {
                 name.set(project.name)
                 description.set(project.description)
