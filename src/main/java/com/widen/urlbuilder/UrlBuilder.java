@@ -57,6 +57,10 @@ public class UrlBuilder {
 
     private Encoder encoder = new BuiltinEncoder();
 
+    private Encoder pathEncoder = new PathSegmentEncoder();
+
+    private Encoder queryEncoder = new QueryParameterEncoder();
+
     /**
      * Construct a UrlBuilder with no hostname or path.
      *
@@ -87,10 +91,10 @@ public class UrlBuilder {
             for (String pair : pairs) {
                 String[] keyValue = pair.split("=");
                 if (keyValue.length == 2) {
-                    addParameter(decodeValue(keyValue[0]), decodeValue(keyValue[1]));
+                    addParameter(queryEncoder.decode(keyValue[0]), queryEncoder.decode(keyValue[1]));
                 }
                 else if (keyValue.length == 1) {
-                    addParameter(decodeValue(keyValue[0]), "");
+                    addParameter(queryEncoder.decode(keyValue[0]), "");
                 }
             }
         }
@@ -207,9 +211,73 @@ public class UrlBuilder {
 
     /**
      * @param encoder alternative URL encoder
+     * @deprecated Use {@link #usingPathEncoder(Encoder)} and {@link #usingQueryEncoder(Encoder)} instead.
+     *             This method sets both path and query encoders to the same encoder, which may not be
+     *             RFC 3986 compliant.
      */
+    @Deprecated
     public UrlBuilder usingEncoder(Encoder encoder) {
+        this.pathEncoder = encoder;
+        this.queryEncoder = encoder;
         this.encoder = encoder;
+        return this;
+    }
+
+    /**
+     * Enable v2.x-compatible path encoding for backward compatibility.
+     * <p>
+     * By default, v3.x uses RFC 3986 compliant path encoding which does not encode
+     * characters like {@code @}, {@code :}, and sub-delimiters in path segments.
+     * <p>
+     * Call this method if you need to maintain URL compatibility with v2.x output,
+     * for example if you have signed URLs or caches keyed by URL strings.
+     * <p>
+     * Example:
+     * <pre>
+     * // v3 default: http://host.com/user@example.com
+     * new UrlBuilder("host.com", "user@example.com").toString();
+     * 
+     * // v2 compatible: http://host.com/user%40example.com
+     * new UrlBuilder("host.com", "user@example.com")
+     *     .usingLegacyPathEncoding()
+     *     .toString();
+     * </pre>
+     *
+     * @return this builder for method chaining
+     * @see LegacyPathEncoder
+     * @since 3.0.0
+     */
+    @SuppressWarnings("deprecation")
+    public UrlBuilder usingLegacyPathEncoding() {
+        this.pathEncoder = new LegacyPathEncoder();
+        return this;
+    }
+
+    /**
+     * Set a custom encoder for path segments.
+     * <p>
+     * By default, {@link PathSegmentEncoder} is used for RFC 3986 compliant encoding.
+     *
+     * @param encoder the encoder to use for path segments
+     * @return this builder for method chaining
+     * @since 3.0.0
+     */
+    public UrlBuilder usingPathEncoder(Encoder encoder) {
+        this.pathEncoder = encoder;
+        return this;
+    }
+
+    /**
+     * Set a custom encoder for query parameters.
+     * <p>
+     * By default, {@link QueryParameterEncoder} is used for RFC 3986 compliant encoding.
+     *
+     * @param encoder the encoder to use for query parameters
+     * @return this builder for method chaining
+     * @since 3.0.0
+     */
+    public UrlBuilder usingQueryEncoder(Encoder encoder) {
+        this.queryEncoder = encoder;
         return this;
     }
 
@@ -253,7 +321,7 @@ public class UrlBuilder {
         for (String s : split) {
             if (StringUtilsInternal.isNotBlank(s)) {
                 if (encodeSegments) {
-                    list.add(encodeValue(s));
+                    list.add(pathEncoder.encode(s));
                 }
                 else {
                     list.add(s);
@@ -326,7 +394,7 @@ public class UrlBuilder {
      */
     public UrlBuilder addParameter(String key, Object value) {
         if (StringUtilsInternal.isNotBlank(key)) {
-            queryParams.add(new QueryParam(key, value != null ? value.toString() : null, encoder));
+            queryParams.add(new QueryParam(key, value != null ? value.toString() : null, queryEncoder));
         }
 
         return this;
