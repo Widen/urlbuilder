@@ -3,12 +3,13 @@ package com.widen.urlbuilder;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
-import org.junit.Ignore;
-import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class S3UrlBuilderTest
+class S3UrlBuilderTest
 {
     private static final Date farFuture = new Date(1522540800000L);
 
@@ -17,7 +18,7 @@ public class S3UrlBuilderTest
     private static final String awsPrivateKey = System.getProperty("awsPrivateKey");
 
     @Test
-    public void testSimpleBucketKey()
+    void testSimpleBucketKey()
     {
         S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "foo/bar.jpg");
 
@@ -25,7 +26,7 @@ public class S3UrlBuilderTest
     }
 
     @Test
-    public void testSimpleSlashPrefixedBucketKey()
+    void testSimpleSlashPrefixedBucketKey()
     {
         S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "/foo/bar.jpg");
 
@@ -33,7 +34,7 @@ public class S3UrlBuilderTest
     }
 
     @Test
-    public void testDnsBucket()
+    void testDnsBucket()
     {
         S3UrlBuilder builder = new S3UrlBuilder("bucketuno.test.com", "foo/bar.jpg").usingBucketInHostname();
 
@@ -41,7 +42,7 @@ public class S3UrlBuilderTest
     }
 
     @Test
-    public void testVirtualHostBucket()
+    void testVirtualHostBucket()
     {
         S3UrlBuilder builder = new S3UrlBuilder("bucketuno.test.com", "foo/bar.jpg").usingBucketVirtualHost();
 
@@ -49,7 +50,7 @@ public class S3UrlBuilderTest
     }
 
     @Test
-    public void testRegionEndointSetting()
+    void testRegionEndointSetting()
     {
         S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "foo/bar.jpg").inRegion("eu-west-1");
 
@@ -57,7 +58,7 @@ public class S3UrlBuilderTest
     }
 
     @Test
-    public void testEndointSetting()
+    void testEndointSetting()
     {
         S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "foo/bar.jpg").withEndpoint("s3clone.example.com").usingBucketInPath();
 
@@ -65,8 +66,8 @@ public class S3UrlBuilderTest
     }
 
     @Test
-    @Ignore("Dependency on a private key")
-    public void testHostnameAndPathStyleStringsAreTheSameSignature()
+    @Disabled("Dependency on a private key")
+    void testHostnameAndPathStyleStringsAreTheSameSignature()
     {
         S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat.jpeg").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
 
@@ -80,34 +81,34 @@ public class S3UrlBuilderTest
         assertEquals("http://s3.amazonaws.com/urlbuildertests.widen.com/cat.jpeg?Expires=1522540800&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Signature=fHj68yJqZ1ImRrsgogBHZdb4Ceo%3D", path);
     }
 
-    @Test(expected = IllegalStateException.class)
-    public void testExpireWithNoAccountsThrows()
+    @Test
+    void testExpireWithNoAccountsThrows()
     {
         S3UrlBuilder builder = new S3UrlBuilder("bucket.test.com", "foo.txt").expireIn(1, TimeUnit.HOURS);
 
-        builder.toString();
+        assertThrows(IllegalStateException.class, builder::toString);
     }
 
     @Test
-    @Ignore("Dependency on a private key")
-    public void testExpiringAttachmentFilename()
+    @Disabled("Dependency on a private key")
+    void testExpiringAttachmentFilename()
     {
         S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat3-public.jpeg").withAttachmentFilename("kitty-cat.jpg").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
 
         assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/cat3-public.jpeg?response-content-disposition=attachment%3B%20filename%3D%22kitty-cat.jpg%22&Expires=1522540800&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Signature=jH%2BRr3TEjvu2Wk7cq9ER7ybdErg%3D", builder.toString());
     }
 
-    @Test(expected = IllegalStateException.class)
-    public void testPublicAttachmentFilenameThrows()
+    @Test
+    void testPublicAttachmentFilenameThrows()
     {
         S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat3-public.jpeg").withAttachmentFilename("kitty-cat.jpg");
 
-        builder.toString();
+        assertThrows(IllegalStateException.class, builder::toString);
     }
 
     @Test
-    @Ignore("Dependency on a private key")
-    public void testHashDoesNotChangeSignature()
+    @Disabled("Dependency on a private key")
+    void testHashDoesNotChangeSignature()
     {
         S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat3-public.jpeg").usingCredentials(awsAccount, awsPrivateKey).expireAt(farFuture);
 
@@ -119,7 +120,7 @@ public class S3UrlBuilderTest
     }
 
     @Test
-    public void testEncodedCharsInKey()
+    void testEncodedCharsInKey()
     {
         S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat3 % public.jpeg");
 
@@ -127,8 +128,8 @@ public class S3UrlBuilderTest
     }
 
     @Test
-    @Ignore("Dependency on a private key")
-    public void testNonAsciiCharsInAttachment()
+    @Disabled("Dependency on a private key")
+    void testNonAsciiCharsInAttachment()
     {
         S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "foo.jpeg").withAttachmentFilename("+ƒoo.jpeg").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
 
@@ -136,8 +137,8 @@ public class S3UrlBuilderTest
     }
 
     @Test
-    @Ignore("Dependency on a private key")
-    public void testOnlyNonAsciiCharsInAttachment()
+    @Disabled("Dependency on a private key")
+    void testOnlyNonAsciiCharsInAttachment()
     {
         S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "foo.jpeg").withAttachmentFilename("ƒƒƒƒƒ").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
 
