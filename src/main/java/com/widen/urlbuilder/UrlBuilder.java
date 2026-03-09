@@ -309,7 +309,7 @@ public class UrlBuilder {
         return this;
     }
 
-    List<String> makePathSegments(String in, boolean encodeSegments) {
+    List<String> makePathSegments(String in, boolean decodeSegments) {
         ArrayList<String> list = new ArrayList<String>();
 
         if (in == null) {
@@ -320,16 +320,30 @@ public class UrlBuilder {
 
         for (String s : split) {
             if (StringUtilsInternal.isNotBlank(s)) {
-                if (encodeSegments) {
-                    list.add(pathEncoder.encode(s));
+                if (decodeSegments) {
+                    // Store raw (decoded) segments - encoding happens at output time
+                    list.add(s);
                 }
                 else {
-                    list.add(s);
+                    // Input is already encoded, decode for storage
+                    list.add(pathEncoder.decode(s));
                 }
             }
         }
 
         return list;
+    }
+
+    /**
+     * Encode path segments using the current path encoder.
+     * This is called at output time to allow encoder changes to take effect.
+     */
+    private List<String> encodePathSegments() {
+        List<String> encoded = new ArrayList<>(path.size());
+        for (String segment : path) {
+            encoded.add(pathEncoder.encode(segment));
+        }
+        return encoded;
     }
 
     /**
@@ -552,7 +566,7 @@ public class UrlBuilder {
         url.append("/");
 
         if (!path.isEmpty()) {
-            url.append(StringUtilsInternal.join(path, "/"));
+            url.append(StringUtilsInternal.join(encodePathSegments(), "/"));
 
             if (trailingPathSlash) {
                 url.append("/");

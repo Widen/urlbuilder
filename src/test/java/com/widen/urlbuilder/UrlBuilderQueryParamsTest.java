@@ -78,7 +78,8 @@ class UrlBuilderQueryParamsTest
     @Test
     void encodesAmpersandInPathAndParameters()
     {
+        // RFC 3986: & is a sub-delim, allowed unencoded in paths but must be encoded in query params
         String url = new UrlBuilder("my.host.com", "foo & bar").addParameter("1&2", "3&4").addParameter("a", "b&c").toString();
-        assertEquals("http://my.host.com/foo%20%26%20bar?1%262=3%264&a=b%26c", url);
+        assertEquals("http://my.host.com/foo%20&%20bar?1%262=3%264&a=b%26c", url);
     }
 }
