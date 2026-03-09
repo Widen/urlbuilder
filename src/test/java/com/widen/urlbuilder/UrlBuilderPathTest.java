@@ -140,4 +140,43 @@ class UrlBuilderPathTest
         String url = new UrlBuilder("my.host.com", "100%complete").toString();
         assertEquals("http://my.host.com/100%25complete", url);
     }
+
+    @Test
+    void legacyModeEncodesAtSign()
+    {
+        String url = new UrlBuilder("my.host.com", "user@example.com")
+            .usingLegacyPathEncoding()
+            .toString();
+        assertEquals("http://my.host.com/user%40example.com", url);
+    }
+
+    @Test
+    void legacyModeEncodesColon()
+    {
+        String url = new UrlBuilder("my.host.com", "time:12:30:00")
+            .usingLegacyPathEncoding()
+            .toString();
+        assertEquals("http://my.host.com/time%3A12%3A30%3A00", url);
+    }
+
+    @Test
+    void legacyModeEncodesSubDelims()
+    {
+        String url = new UrlBuilder("my.host.com", "foo & bar")
+            .usingLegacyPathEncoding()
+            .toString();
+        assertEquals("http://my.host.com/foo%20%26%20bar", url);
+    }
+
+    @Test
+    void legacyModeMatchesV2Output()
+    {
+        // Document exact v2.x output for migration testing
+        String url = new UrlBuilder("my.host.com", "user@host:8080")
+            .usingLegacyPathEncoding()
+            .addParameter("ref", "user@host:8080")
+            .toString();
+        // Both path and query encode @ and : in legacy mode
+        assertEquals("http://my.host.com/user%40host%3A8080?ref=user%40host%3A8080", url);
+    }
 }
