@@ -88,4 +88,56 @@ class UrlBuilderPathTest
         String url = new UrlBuilder("my.host.com", "foo bar baz.html").toString();
         assertEquals("http://my.host.com/foo%20bar%20baz.html", url);
     }
+
+    @Test
+    void doesNotEncodeAtSignInPath()
+    {
+        String url = new UrlBuilder("my.host.com", "user@example.com").toString();
+        assertEquals("http://my.host.com/user@example.com", url);
+    }
+
+    @Test
+    void doesNotEncodeColonInPath()
+    {
+        String url = new UrlBuilder("my.host.com", "time:12:30:00").toString();
+        assertEquals("http://my.host.com/time:12:30:00", url);
+    }
+
+    @Test
+    void doesNotEncodeSubDelimsInPath()
+    {
+        // sub-delims = "!" / "$" / "&" / "'" / "(" / ")" / "*" / "+" / "," / ";" / "="
+        String url = new UrlBuilder("my.host.com", "file!name$var&test'quote(paren)*star+plus,comma;semi=equals").toString();
+        assertEquals("http://my.host.com/file!name$var&test'quote(paren)*star+plus,comma;semi=equals", url);
+    }
+
+    @Test
+    void doesNotEncodeTildeInPath()
+    {
+        String url = new UrlBuilder("my.host.com", "~user/home").toString();
+        assertEquals("http://my.host.com/~user/home", url);
+    }
+
+    @Test
+    void encodesGenDelimsInPath()
+    {
+        // gen-delims that ARE NOT allowed unencoded in path segments: ? # [ ]
+        // Note: / is allowed but treated as segment delimiter
+        String url = new UrlBuilder("my.host.com", "path?query#fragment").toString();
+        assertEquals("http://my.host.com/path%3Fquery%23fragment", url);
+    }
+
+    @Test
+    void encodesSquareBracketsInPath()
+    {
+        String url = new UrlBuilder("my.host.com", "array[0]").toString();
+        assertEquals("http://my.host.com/array%5B0%5D", url);
+    }
+
+    @Test
+    void encodesPercentInPath()
+    {
+        String url = new UrlBuilder("my.host.com", "100%complete").toString();
+        assertEquals("http://my.host.com/100%25complete", url);
+    }
 }
