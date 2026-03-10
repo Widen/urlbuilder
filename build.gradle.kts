@@ -96,5 +96,5 @@ signing {
     val signingPassword = findProperty("signingPassword") as String?
     useInMemoryPgpKeys(signingKey, signingPassword)
     sign(publishing.publications["maven"])
-    isRequired = signingKey != null && signingPassword != null
+    isRequired = signingKey != null
 }
