@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "com.widen"
-version = "2.1.3-SNAPSHOT"
+version = "2.1.2"
 description = "Utility class for constructing syntactically correct HTTP URLs using a fluent method-chaining API"
 
 val repoUrl = "https://github.com/Widen/${project.name}"
