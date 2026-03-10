@@ -179,4 +179,39 @@ class UrlBuilderPathTest
         // Both path and query encode @ and : in legacy mode
         assertEquals("http://my.host.com/user%40host%3A8080?ref=user%40host%3A8080", url);
     }
+
+    @Test
+    void usingPathEncoderAllowsCustomEncoder()
+    {
+        // Use NoEncodingEncoder to pass through path unchanged
+        String url = new UrlBuilder("my.host.com", "path with spaces")
+            .usingPathEncoder(new NoEncodingEncoder())
+            .toString();
+        // Spaces not encoded because NoEncodingEncoder passes through
+        assertEquals("http://my.host.com/path with spaces", url);
+    }
+
+    @Test
+    void usingPathEncoderCanSwitchToLegacyEncoder()
+    {
+        // Explicitly set LegacyPathEncoder via usingPathEncoder
+        @SuppressWarnings("deprecation")
+        String url = new UrlBuilder("my.host.com", "user@example.com")
+            .usingPathEncoder(new LegacyPathEncoder())
+            .toString();
+        assertEquals("http://my.host.com/user%40example.com", url);
+    }
+
+    @Test
+    void usingPathEncoderAffectsOnlyPath()
+    {
+        // Custom path encoder should not affect query parameters
+        String url = new UrlBuilder("my.host.com", "test@path")
+            .usingPathEncoder(new NoEncodingEncoder())
+            .addParameter("email", "test@query")
+            .toString();
+        // Path: @ not encoded (NoEncodingEncoder)
+        // Query: @ still encoded (default QueryParameterEncoder)
+        assertEquals("http://my.host.com/test@path?email=test%40query", url);
+    }
 }

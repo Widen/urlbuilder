@@ -121,4 +121,55 @@ class UrlBuilderQueryParamsTest
         // Query: @ and : are encoded
         assertEquals("http://my.host.com/user@host:8080?ref=user%40host%3A8080", url);
     }
+
+    @Test
+    void usingQueryEncoderAllowsCustomEncoder()
+    {
+        // Use NoEncodingEncoder to pass through query params unchanged
+        String url = new UrlBuilder("my.host.com", "/path")
+            .usingQueryEncoder(new NoEncodingEncoder())
+            .addParameter("key", "value with spaces")
+            .toString();
+        // Spaces not encoded because NoEncodingEncoder passes through
+        assertEquals("http://my.host.com/path?key=value with spaces", url);
+    }
+
+    @Test
+    void usingQueryEncoderCanUsePathSegmentEncoder()
+    {
+        // Use PathSegmentEncoder for query params (less strict encoding)
+        String url = new UrlBuilder("my.host.com", "/path")
+            .usingQueryEncoder(new PathSegmentEncoder())
+            .addParameter("ref", "user@host:8080")
+            .toString();
+        // @ and : not encoded when using PathSegmentEncoder
+        assertEquals("http://my.host.com/path?ref=user@host:8080", url);
+    }
+
+    @Test
+    void usingQueryEncoderAffectsOnlyQueryParams()
+    {
+        // Custom query encoder should not affect path
+        String url = new UrlBuilder("my.host.com", "path with spaces")
+            .usingQueryEncoder(new NoEncodingEncoder())
+            .addParameter("key", "value with spaces")
+            .toString();
+        // Path: spaces still encoded (default PathSegmentEncoder)
+        // Query: spaces not encoded (NoEncodingEncoder)
+        assertEquals("http://my.host.com/path%20with%20spaces?key=value with spaces", url);
+    }
+
+    @Test
+    void usingBothEncodersIndependently()
+    {
+        // Set both encoders to different custom encoders
+        String url = new UrlBuilder("my.host.com", "path@test")
+            .usingPathEncoder(new NoEncodingEncoder())
+            .usingQueryEncoder(new PathSegmentEncoder())
+            .addParameter("email", "user@test")
+            .toString();
+        // Path: no encoding (NoEncodingEncoder)
+        // Query: @ not encoded (PathSegmentEncoder allows it)
+        assertEquals("http://my.host.com/path@test?email=user@test", url);
+    }
 }
