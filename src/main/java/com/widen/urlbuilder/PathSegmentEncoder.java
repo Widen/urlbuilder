@@ -15,11 +15,16 @@ import java.nio.charset.StandardCharsets;
  * <p>
  * Characters that MUST be encoded in path segments:
  * <ul>
- *   <li>General delimiters used as URI component separators: "/" "?" "#" "[" "]"</li>
- *   <li>The percent character "%" (unless part of percent-encoding)</li>
- *   <li>Any character outside the allowed set</li>
+ *   <li>General delimiters used as URI component separators: {@code /} {@code ?} {@code #} {@code [} {@code ]}</li>
+ *   <li>The percent character {@code %} (unless part of percent-encoding)</li>
+ *   <li>Space and other whitespace</li>
+ *   <li>Any character outside the ASCII printable range (encoded as UTF-8)</li>
  * </ul>
+ * <p>
+ * This is the default encoder for path segments in {@link UrlBuilder}.
  *
+ * @see QueryParameterEncoder
+ * @see UrlBuilder#usingPathEncoder(Encoder)
  * @see <a href="https://www.rfc-editor.org/rfc/rfc3986#section-3.3">RFC 3986 Section 3.3</a>
  * @since 3.0.0
  */
@@ -34,6 +39,12 @@ public class PathSegmentEncoder implements Encoder {
 
     private static final char[] HEX_DIGITS = "0123456789ABCDEF".toCharArray();
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This implementation preserves unreserved characters, sub-delimiters, colon, and at-sign
+     * per RFC 3986 Section 3.3. All other characters are percent-encoded as UTF-8 bytes.
+     */
     @Override
     public String encode(String text) {
         if (text == null || text.isEmpty()) {
@@ -60,6 +71,12 @@ public class PathSegmentEncoder implements Encoder {
         return encoded.toString();
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Decodes percent-encoded sequences back to their original UTF-8 characters.
+     * Invalid percent sequences (e.g., {@code %GG}) are passed through unchanged.
+     */
     @Override
     public String decode(String text) {
         if (text == null || text.isEmpty()) {

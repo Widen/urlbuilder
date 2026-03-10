@@ -31,6 +31,14 @@ import java.net.URLEncoder;
 @Deprecated
 public class LegacyPathEncoder implements Encoder {
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This implementation uses {@link URLEncoder} for v2.x-compatible encoding.
+     * Spaces are encoded as {@code %20} (not {@code +}).
+     *
+     * @throws RuntimeException if UTF-8 encoding is not available
+     */
     @Override
     public String encode(String text) {
         if (text == null || text.isEmpty()) {
@@ -46,6 +54,13 @@ public class LegacyPathEncoder implements Encoder {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This implementation uses {@link URLDecoder} for decoding.
+     *
+     * @throws RuntimeException if UTF-8 encoding is not available
+     */
     @Override
     public String decode(String text) {
         if (text == null || text.isEmpty()) {

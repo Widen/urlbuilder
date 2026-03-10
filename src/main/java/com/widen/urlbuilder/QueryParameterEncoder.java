@@ -12,18 +12,22 @@ import java.nio.charset.StandardCharsets;
  * <p>
  * Characters that are safe (not encoded) in query parameters:
  * <ul>
- *   <li>Unreserved characters: A-Z a-z 0-9 - . _ ~</li>
+ *   <li>Unreserved characters: {@code A-Z a-z 0-9 - . _ ~}</li>
  * </ul>
  * <p>
  * Characters that MUST be encoded:
  * <ul>
- *   <li>Sub-delimiters: ! $ &amp; ' ( ) * + , ; =</li>
- *   <li>General delimiters: : / ? # [ ] @</li>
+ *   <li>Sub-delimiters: {@code ! $ &amp; ' ( ) * + , ; =}</li>
+ *   <li>General delimiters: {@code : / ? # [ ] @}</li>
  *   <li>Space and other whitespace</li>
- *   <li>The percent character "%" (unless part of percent-encoding)</li>
- *   <li>Any character outside the ASCII printable range</li>
+ *   <li>The percent character {@code %} (unless part of percent-encoding)</li>
+ *   <li>Any character outside the ASCII printable range (encoded as UTF-8)</li>
  * </ul>
+ * <p>
+ * This is the default encoder for query parameters in {@link UrlBuilder}.
  *
+ * @see PathSegmentEncoder
+ * @see UrlBuilder#usingQueryEncoder(Encoder)
  * @see <a href="https://www.rfc-editor.org/rfc/rfc3986#section-3.4">RFC 3986 Section 3.4</a>
  * @since 3.0.0
  */
@@ -36,6 +40,12 @@ public class QueryParameterEncoder implements Encoder {
 
     private static final char[] HEX_DIGITS = "0123456789ABCDEF".toCharArray();
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * This implementation only preserves unreserved characters per RFC 3986.
+     * All other characters including sub-delimiters are percent-encoded as UTF-8 bytes.
+     */
     @Override
     public String encode(String text) {
         if (text == null || text.isEmpty()) {
@@ -62,6 +72,12 @@ public class QueryParameterEncoder implements Encoder {
         return encoded.toString();
     }
 
+    /**
+     * {@inheritDoc}
+     * <p>
+     * Decodes percent-encoded sequences back to their original UTF-8 characters.
+     * Invalid percent sequences (e.g., {@code %GG}) are passed through unchanged.
+     */
     @Override
     public String decode(String text) {
         if (text == null || text.isEmpty()) {
