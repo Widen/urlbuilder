@@ -53,7 +53,7 @@ if [[ "$CURRENT_BRANCH" != "master" && "$CURRENT_BRANCH" != "main" ]]; then
 fi
 
 # Get current version from build.gradle.kts
-CURRENT_VERSION=$(grep -E '^version\s*=' build.gradle.kts | sed -E 's/version\s*=\s*"([^"]+)".*/\1/')
+CURRENT_VERSION=$(grep -E '^version[[:space:]]*=' build.gradle.kts | sed -E 's/version[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/')
 
 if [[ -z "$CURRENT_VERSION" ]]; then
     error "Could not determine current version from build.gradle.kts"
@@ -104,11 +104,11 @@ fi
 
 # Update version in build.gradle.kts
 info "Updating build.gradle.kts..."
-sed -i.bak -E "s/^(version\s*=\s*\")[^\"]+\"/\1$NEW_VERSION\"/" build.gradle.kts
+sed -i.bak -E "s/^(version[[:space:]]*=[[:space:]]*\")[^\"]*/\1$NEW_VERSION/" build.gradle.kts
 rm -f build.gradle.kts.bak
 
 # Verify the change
-UPDATED_VERSION=$(grep -E '^version\s*=' build.gradle.kts | sed -E 's/version\s*=\s*"([^"]+)".*/\1/')
+UPDATED_VERSION=$(grep -E '^version[[:space:]]*=' build.gradle.kts | sed -E 's/version[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/')
 if [[ "$UPDATED_VERSION" != "$NEW_VERSION" ]]; then
     error "Failed to update version in build.gradle.kts"
     git checkout build.gradle.kts
