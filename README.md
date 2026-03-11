@@ -19,8 +19,8 @@ Made with :heart: by Widen.
     * [PathSegmentEncoder](/src/main/java/com/widen/urlbuilder/PathSegmentEncoder.java) for path segments (allows `@`, `:`, sub-delimiters unencoded)
     * [QueryParameterEncoder](/src/main/java/com/widen/urlbuilder/QueryParameterEncoder.java) for query parameters (stricter encoding)
   * Backward compatibility:
-    * [LegacyPathEncoder](/src/main/java/com/widen/urlbuilder/LegacyPathEncoder.java) for v2.x-compatible encoding
-    * Use `usingLegacyPathEncoding()` to enable v2.x behavior for both path and query encoding
+    * [LegacyEncoder](/src/main/java/com/widen/urlbuilder/LegacyEncoder.java) for v2.x-compatible encoding
+    * Use `usingLegacyEncoding()` to enable v2.x behavior for both path and query encoding
   * Custom encoders supported via `usingPathEncoder(Encoder)` and `usingQueryEncoder(Encoder)`
   * [NoEncodingEncoder](/src/main/java/com/widen/urlbuilder/NoEncodingEncoder.java) passes text through unchanged
 * Options for generation of fully-qualified, hostname relative, or protocol relative URLs

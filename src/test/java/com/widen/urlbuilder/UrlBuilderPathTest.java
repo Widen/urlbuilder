@@ -145,7 +145,7 @@ class UrlBuilderPathTest
     void legacyModeEncodesAtSign()
     {
         String url = new UrlBuilder("my.host.com", "user@example.com")
-            .usingLegacyPathEncoding()
+            .usingLegacyEncoding()
             .toString();
         assertEquals("http://my.host.com/user%40example.com", url);
     }
@@ -154,7 +154,7 @@ class UrlBuilderPathTest
     void legacyModeEncodesColon()
     {
         String url = new UrlBuilder("my.host.com", "time:12:30:00")
-            .usingLegacyPathEncoding()
+            .usingLegacyEncoding()
             .toString();
         assertEquals("http://my.host.com/time%3A12%3A30%3A00", url);
     }
@@ -163,7 +163,7 @@ class UrlBuilderPathTest
     void legacyModeEncodesSubDelims()
     {
         String url = new UrlBuilder("my.host.com", "foo & bar")
-            .usingLegacyPathEncoding()
+            .usingLegacyEncoding()
             .toString();
         assertEquals("http://my.host.com/foo%20%26%20bar", url);
     }
@@ -173,7 +173,7 @@ class UrlBuilderPathTest
     {
         // Document exact v2.x output for migration testing
         String url = new UrlBuilder("my.host.com", "user@host:8080")
-            .usingLegacyPathEncoding()
+            .usingLegacyEncoding()
             .addParameter("ref", "user@host:8080")
             .toString();
         // Both path and query encode @ and : in legacy mode
@@ -183,7 +183,7 @@ class UrlBuilderPathTest
     @Test
     void legacyModeAffectsBothPathAndQueryEncoding()
     {
-        // Verify usingLegacyPathEncoding() sets both path and query encoders
+        // Verify usingLegacyEncoding() sets both path and query encoders
         // Without legacy mode: path allows @ unencoded, query encodes @
         String defaultUrl = new UrlBuilder("my.host.com", "test@path")
             .addParameter("key", "test@value")
@@ -192,7 +192,7 @@ class UrlBuilderPathTest
         
         // With legacy mode: both path and query encode @
         String legacyUrl = new UrlBuilder("my.host.com", "test@path")
-            .usingLegacyPathEncoding()
+            .usingLegacyEncoding()
             .addParameter("key", "test@value")
             .toString();
         assertEquals("http://my.host.com/test%40path?key=test%40value", legacyUrl);
@@ -212,10 +212,10 @@ class UrlBuilderPathTest
     @Test
     void usingPathEncoderCanSwitchToLegacyEncoder()
     {
-        // Explicitly set LegacyPathEncoder via usingPathEncoder
+        // Explicitly set LegacyEncoder via usingPathEncoder
         @SuppressWarnings("deprecation")
         String url = new UrlBuilder("my.host.com", "user@example.com")
-            .usingPathEncoder(new LegacyPathEncoder())
+            .usingPathEncoder(new LegacyEncoder())
             .toString();
         assertEquals("http://my.host.com/user%40example.com", url);
     }

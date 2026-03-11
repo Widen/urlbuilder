@@ -19,16 +19,16 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
- * Tests for LegacyPathEncoder verifying v2.x compatibility.
+ * Tests for LegacyEncoder verifying v2.x compatibility.
  */
 @SuppressWarnings("deprecation")
-class LegacyPathEncoderTest {
+class LegacyEncoderTest {
 
-    private LegacyPathEncoder encoder;
+    private LegacyEncoder encoder;
 
     @BeforeEach
     void setUp() {
-        encoder = new LegacyPathEncoder();
+        encoder = new LegacyEncoder();
     }
 
     @Test

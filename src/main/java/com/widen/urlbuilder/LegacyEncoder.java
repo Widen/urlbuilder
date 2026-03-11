@@ -12,7 +12,7 @@ import java.net.URLEncoder;
  * for users who need to maintain URL compatibility during migration from v2.x to v3.x.
  * <p>
  * In v2.x, this encoding was used for both path segments and query parameters. When
- * {@link UrlBuilder#usingLegacyPathEncoding()} is called, this encoder is set for both
+ * {@link UrlBuilder#usingLegacyEncoding()} is called, this encoder is set for both
  * path and query encoding to replicate v2.x behavior exactly.
  * <p>
  * <b>Note:</b> New code should use:
@@ -25,19 +25,19 @@ import java.net.URLEncoder;
  * <pre>
  * // Enable v2-compatible encoding for both path and query
  * new UrlBuilder("host.com", "path")
- *     .usingLegacyPathEncoding()
+ *     .usingLegacyEncoding()
  *     .toString();
  * </pre>
  *
  * @see PathSegmentEncoder
  * @see QueryParameterEncoder
- * @see UrlBuilder#usingLegacyPathEncoding()
+ * @see UrlBuilder#usingLegacyEncoding()
  * @since 3.0.0
  * @deprecated Use {@link PathSegmentEncoder} and {@link QueryParameterEncoder} for new code.
  *             This encoder exists only for backward compatibility with v2.x URL output.
  */
 @Deprecated
-public class LegacyPathEncoder implements Encoder {
+public class LegacyEncoder implements Encoder {
 
     /**
      * {@inheritDoc}

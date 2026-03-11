@@ -43,7 +43,7 @@ import java.util.Map.Entry;
  *   <li>Path segments are encoded using {@link PathSegmentEncoder} (RFC 3986 Section 3.3)</li>
  *   <li>Query parameters are encoded using {@link QueryParameterEncoder} (RFC 3986 Section 3.4)</li>
  *   <li>Custom encoders can be set via {@link #usingPathEncoder(Encoder)} and {@link #usingQueryEncoder(Encoder)}</li>
- *   <li>For v2.x backward compatibility, use {@link #usingLegacyPathEncoding()}</li>
+ *   <li>For v2.x backward compatibility, use {@link #usingLegacyEncoding()}</li>
  * </ul>
  * <p>
  * <b>Generation Modes:</b>
@@ -294,17 +294,17 @@ public class UrlBuilder {
      * 
      * // v2 compatible: http://host.com/user%40example.com
      * new UrlBuilder("host.com", "user@example.com")
-     *     .usingLegacyPathEncoding()
+     *     .usingLegacyEncoding()
      *     .toString();
      * </pre>
      *
      * @return this builder for method chaining
-     * @see LegacyPathEncoder
+     * @see LegacyEncoder
      * @since 3.0.0
      */
     @SuppressWarnings("deprecation")
-    public UrlBuilder usingLegacyPathEncoding() {
-        LegacyPathEncoder legacyEncoder = new LegacyPathEncoder();
+    public UrlBuilder usingLegacyEncoding() {
+        LegacyEncoder legacyEncoder = new LegacyEncoder();
         this.pathEncoder = legacyEncoder;
         this.queryEncoder = legacyEncoder;
         return this;
