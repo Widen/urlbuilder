@@ -277,13 +277,15 @@ public class UrlBuilder {
     }
 
     /**
-     * Enable v2.x-compatible path encoding for backward compatibility.
+     * Enable v2.x-compatible encoding for backward compatibility.
      * <p>
-     * By default, v3.x uses RFC 3986 compliant path encoding which does not encode
-     * characters like {@code @}, {@code :}, and sub-delimiters in path segments.
+     * By default, v3.x uses RFC 3986 compliant encoding which does not encode
+     * characters like {@code @}, {@code :}, and sub-delimiters in path segments,
+     * and uses proper query parameter encoding.
      * <p>
      * Call this method if you need to maintain URL compatibility with v2.x output,
-     * for example if you have signed URLs or caches keyed by URL strings.
+     * for example if you have signed URLs or caches keyed by URL strings. This sets
+     * both the path encoder and query encoder to use the legacy v2.x behavior.
      * <p>
      * Example:
      * <pre>
@@ -302,7 +304,9 @@ public class UrlBuilder {
      */
     @SuppressWarnings("deprecation")
     public UrlBuilder usingLegacyPathEncoding() {
-        this.pathEncoder = new LegacyPathEncoder();
+        LegacyPathEncoder legacyEncoder = new LegacyPathEncoder();
+        this.pathEncoder = legacyEncoder;
+        this.queryEncoder = legacyEncoder;
         return this;
     }
 

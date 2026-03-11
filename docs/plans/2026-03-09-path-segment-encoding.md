@@ -6,8 +6,8 @@
 
 **Architecture:** Create three new encoder implementations:
 1. `PathSegmentEncoder` - RFC 3986 compliant path encoding (default in v3)
-2. `QueryParameterEncoder` - RFC 3986 compliant query parameter encoding (replaces BuiltinEncoder usage)
-3. `LegacyPathEncoder` - v2-compatible path encoding for users who need backward compatibility
+2. `QueryParameterEncoder` - RFC 3986 compliant query parameter encoding (default in v3)
+3. `LegacyPathEncoder` - v2-compatible encoding for users who need backward compatibility (sets both path and query encoders)
 
 The `UrlBuilder` will use separate encoder fields for paths vs query params, with a convenience method to enable legacy/v2 encoding behavior.
 
@@ -23,7 +23,7 @@ Per RFC 3986:
 - **Sub-delimiters**: `! $ & ' ( ) * + , ; =`
 - **Query string**: Different rules - `&` and `=` are typically used as delimiters so must be encoded when they appear in values
 
-**The Problem:** `BuiltinEncoder` uses `java.net.URLEncoder` which encodes for `application/x-www-form-urlencoded` (query strings), not for path segments. It over-encodes characters like `@`, `:`, `$`, `!`, etc. that are valid in path segments.
+**The Problem:** The old `BuiltinEncoder` used `java.net.URLEncoder` which encodes for `application/x-www-form-urlencoded` (HTML forms), not for URL path segments. It over-encoded characters like `@`, `:`, `$`, `!`, etc. that are valid in path segments per RFC 3986.
 
 **Example of current incorrect behavior:**
 - Input path: `user@example.com`
@@ -36,8 +36,8 @@ Per RFC 3986:
 
 | Component | v2 Behavior | v3 Behavior (RFC 3986) |
 |-----------|-------------|------------------------|
-| Path segments | `BuiltinEncoder` (over-encodes) | `PathSegmentEncoder` |
-| Query params | `BuiltinEncoder` | `QueryParameterEncoder` |
+| Path segments | `LegacyPathEncoder` (over-encodes) | `PathSegmentEncoder` |
+| Query params | `LegacyPathEncoder` (over-encodes) | `QueryParameterEncoder` |
 
 ### New Encoder Classes
 
@@ -45,7 +45,7 @@ Per RFC 3986:
 |-------|---------|-----------------|
 | `PathSegmentEncoder` | RFC 3986 path encoding | unreserved + sub-delims + `:@` |
 | `QueryParameterEncoder` | RFC 3986 query encoding | unreserved only (encodes sub-delims) |
-| `LegacyPathEncoder` | v2-compatible path encoding | Same as `BuiltinEncoder` |
+| `LegacyPathEncoder` | v2-compatible encoding (both path + query) | Uses `java.net.URLEncoder` |
 
 ### User Migration Path
 

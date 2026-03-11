@@ -181,6 +181,24 @@ class UrlBuilderPathTest
     }
 
     @Test
+    void legacyModeAffectsBothPathAndQueryEncoding()
+    {
+        // Verify usingLegacyPathEncoding() sets both path and query encoders
+        // Without legacy mode: path allows @ unencoded, query encodes @
+        String defaultUrl = new UrlBuilder("my.host.com", "test@path")
+            .addParameter("key", "test@value")
+            .toString();
+        assertEquals("http://my.host.com/test@path?key=test%40value", defaultUrl);
+        
+        // With legacy mode: both path and query encode @
+        String legacyUrl = new UrlBuilder("my.host.com", "test@path")
+            .usingLegacyPathEncoding()
+            .addParameter("key", "test@value")
+            .toString();
+        assertEquals("http://my.host.com/test%40path?key=test%40value", legacyUrl);
+    }
+
+    @Test
     void usingPathEncoderAllowsCustomEncoder()
     {
         // Use NoEncodingEncoder to pass through path unchanged

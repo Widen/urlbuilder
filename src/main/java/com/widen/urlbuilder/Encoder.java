@@ -16,7 +16,7 @@ package com.widen.urlbuilder;
  *
  * @see PathSegmentEncoder
  * @see QueryParameterEncoder
- * @see BuiltinEncoder
+ * @see LegacyPathEncoder
  * @see NoEncodingEncoder
  */
 public interface Encoder
