@@ -88,4 +88,148 @@ class UrlBuilderPathTest
         String url = new UrlBuilder("my.host.com", "foo bar baz.html").toString();
         assertEquals("http://my.host.com/foo%20bar%20baz.html", url);
     }
+
+    @Test
+    void doesNotEncodeAtSignInPath()
+    {
+        String url = new UrlBuilder("my.host.com", "user@example.com").toString();
+        assertEquals("http://my.host.com/user@example.com", url);
+    }
+
+    @Test
+    void doesNotEncodeColonInPath()
+    {
+        String url = new UrlBuilder("my.host.com", "time:12:30:00").toString();
+        assertEquals("http://my.host.com/time:12:30:00", url);
+    }
+
+    @Test
+    void doesNotEncodeSubDelimsInPath()
+    {
+        // sub-delims = "!" / "$" / "&" / "'" / "(" / ")" / "*" / "+" / "," / ";" / "="
+        String url = new UrlBuilder("my.host.com", "file!name$var&test'quote(paren)*star+plus,comma;semi=equals").toString();
+        assertEquals("http://my.host.com/file!name$var&test'quote(paren)*star+plus,comma;semi=equals", url);
+    }
+
+    @Test
+    void doesNotEncodeTildeInPath()
+    {
+        String url = new UrlBuilder("my.host.com", "~user/home").toString();
+        assertEquals("http://my.host.com/~user/home", url);
+    }
+
+    @Test
+    void encodesGenDelimsInPath()
+    {
+        // gen-delims that ARE NOT allowed unencoded in path segments: ? # [ ]
+        // Note: / is allowed but treated as segment delimiter
+        String url = new UrlBuilder("my.host.com", "path?query#fragment").toString();
+        assertEquals("http://my.host.com/path%3Fquery%23fragment", url);
+    }
+
+    @Test
+    void encodesSquareBracketsInPath()
+    {
+        String url = new UrlBuilder("my.host.com", "array[0]").toString();
+        assertEquals("http://my.host.com/array%5B0%5D", url);
+    }
+
+    @Test
+    void encodesPercentInPath()
+    {
+        String url = new UrlBuilder("my.host.com", "100%complete").toString();
+        assertEquals("http://my.host.com/100%25complete", url);
+    }
+
+    @Test
+    void legacyModeEncodesAtSign()
+    {
+        String url = new UrlBuilder("my.host.com", "user@example.com")
+            .usingLegacyEncoding()
+            .toString();
+        assertEquals("http://my.host.com/user%40example.com", url);
+    }
+
+    @Test
+    void legacyModeEncodesColon()
+    {
+        String url = new UrlBuilder("my.host.com", "time:12:30:00")
+            .usingLegacyEncoding()
+            .toString();
+        assertEquals("http://my.host.com/time%3A12%3A30%3A00", url);
+    }
+
+    @Test
+    void legacyModeEncodesSubDelims()
+    {
+        String url = new UrlBuilder("my.host.com", "foo & bar")
+            .usingLegacyEncoding()
+            .toString();
+        assertEquals("http://my.host.com/foo%20%26%20bar", url);
+    }
+
+    @Test
+    void legacyModeMatchesV2Output()
+    {
+        // Document exact v2.x output for migration testing
+        String url = new UrlBuilder("my.host.com", "user@host:8080")
+            .usingLegacyEncoding()
+            .addParameter("ref", "user@host:8080")
+            .toString();
+        // Both path and query encode @ and : in legacy mode
+        assertEquals("http://my.host.com/user%40host%3A8080?ref=user%40host%3A8080", url);
+    }
+
+    @Test
+    void legacyModeAffectsBothPathAndQueryEncoding()
+    {
+        // Verify usingLegacyEncoding() sets both path and query encoders
+        // Without legacy mode: path allows @ unencoded, query encodes @
+        String defaultUrl = new UrlBuilder("my.host.com", "test@path")
+            .addParameter("key", "test@value")
+            .toString();
+        assertEquals("http://my.host.com/test@path?key=test%40value", defaultUrl);
+        
+        // With legacy mode: both path and query encode @
+        String legacyUrl = new UrlBuilder("my.host.com", "test@path")
+            .usingLegacyEncoding()
+            .addParameter("key", "test@value")
+            .toString();
+        assertEquals("http://my.host.com/test%40path?key=test%40value", legacyUrl);
+    }
+
+    @Test
+    void usingPathEncoderAllowsCustomEncoder()
+    {
+        // Use NoEncodingEncoder to pass through path unchanged
+        String url = new UrlBuilder("my.host.com", "path with spaces")
+            .usingPathEncoder(new NoEncodingEncoder())
+            .toString();
+        // Spaces not encoded because NoEncodingEncoder passes through
+        assertEquals("http://my.host.com/path with spaces", url);
+    }
+
+    @Test
+    void usingPathEncoderCanSwitchToLegacyEncoder()
+    {
+        // Explicitly set LegacyEncoder via usingPathEncoder
+        @SuppressWarnings("deprecation")
+        String url = new UrlBuilder("my.host.com", "user@example.com")
+            .usingPathEncoder(new LegacyEncoder())
+            .toString();
+        assertEquals("http://my.host.com/user%40example.com", url);
+    }
+
+    @Test
+    void usingPathEncoderAffectsOnlyPath()
+    {
+        // Custom path encoder should not affect query parameters
+        String url = new UrlBuilder("my.host.com", "test@path")
+            .usingPathEncoder(new NoEncodingEncoder())
+            .addParameter("email", "test@query")
+            .toString();
+        // Path: @ not encoded (NoEncodingEncoder)
+        // Query: @ still encoded (default QueryParameterEncoder)
+        assertEquals("http://my.host.com/test@path?email=test%40query", url);
+    }
 }

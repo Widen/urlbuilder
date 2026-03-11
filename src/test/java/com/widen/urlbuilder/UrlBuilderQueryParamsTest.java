@@ -78,7 +78,98 @@ class UrlBuilderQueryParamsTest
     @Test
     void encodesAmpersandInPathAndParameters()
     {
+        // RFC 3986: & is a sub-delim, allowed unencoded in paths but must be encoded in query params
         String url = new UrlBuilder("my.host.com", "foo & bar").addParameter("1&2", "3&4").addParameter("a", "b&c").toString();
-        assertEquals("http://my.host.com/foo%20%26%20bar?1%262=3%264&a=b%26c", url);
+        assertEquals("http://my.host.com/foo%20&%20bar?1%262=3%264&a=b%26c", url);
+    }
+
+    @Test
+    void encodesAtSignInQueryParameter()
+    {
+        String url = new UrlBuilder("my.host.com", "/path")
+            .addParameter("email", "user@example.com")
+            .toString();
+        assertEquals("http://my.host.com/path?email=user%40example.com", url);
+    }
+
+    @Test
+    void encodesColonInQueryParameter()
+    {
+        String url = new UrlBuilder("my.host.com", "/path")
+            .addParameter("time", "12:30:00")
+            .toString();
+        assertEquals("http://my.host.com/path?time=12%3A30%3A00", url);
+    }
+
+    @Test
+    void encodesSubDelimsInQueryParameter()
+    {
+        String url = new UrlBuilder("my.host.com", "/path")
+            .addParameter("special", "a!b$c")
+            .toString();
+        assertEquals("http://my.host.com/path?special=a%21b%24c", url);
+    }
+
+    @Test
+    void pathAndQueryEncodeDifferently()
+    {
+        // Same content in path vs query should encode differently
+        String url = new UrlBuilder("my.host.com", "user@host:8080")
+            .addParameter("ref", "user@host:8080")
+            .toString();
+        // Path: @ and : not encoded (RFC 3986)
+        // Query: @ and : are encoded
+        assertEquals("http://my.host.com/user@host:8080?ref=user%40host%3A8080", url);
+    }
+
+    @Test
+    void usingQueryEncoderAllowsCustomEncoder()
+    {
+        // Use NoEncodingEncoder to pass through query params unchanged
+        String url = new UrlBuilder("my.host.com", "/path")
+            .usingQueryEncoder(new NoEncodingEncoder())
+            .addParameter("key", "value with spaces")
+            .toString();
+        // Spaces not encoded because NoEncodingEncoder passes through
+        assertEquals("http://my.host.com/path?key=value with spaces", url);
+    }
+
+    @Test
+    void usingQueryEncoderCanUsePathSegmentEncoder()
+    {
+        // Use PathSegmentEncoder for query params (less strict encoding)
+        String url = new UrlBuilder("my.host.com", "/path")
+            .usingQueryEncoder(new PathSegmentEncoder())
+            .addParameter("ref", "user@host:8080")
+            .toString();
+        // @ and : not encoded when using PathSegmentEncoder
+        assertEquals("http://my.host.com/path?ref=user@host:8080", url);
+    }
+
+    @Test
+    void usingQueryEncoderAffectsOnlyQueryParams()
+    {
+        // Custom query encoder should not affect path
+        String url = new UrlBuilder("my.host.com", "path with spaces")
+            .usingQueryEncoder(new NoEncodingEncoder())
+            .addParameter("key", "value with spaces")
+            .toString();
+        // Path: spaces still encoded (default PathSegmentEncoder)
+        // Query: spaces not encoded (NoEncodingEncoder)
+        assertEquals("http://my.host.com/path%20with%20spaces?key=value with spaces", url);
+    }
+
+    @Test
+    void usingBothEncodersIndependently()
+    {
+        // Set both encoders to different custom encoders
+        String url = new UrlBuilder("my.host.com", "path@test")
+            .usingPathEncoder(new NoEncodingEncoder())
+            .usingQueryEncoder(new PathSegmentEncoder())
+            .addParameter("email", "user@test")
+            .toString();
+        // Path: no encoding (NoEncodingEncoder)
+        // Query: @ not encoded (PathSegmentEncoder allows it)
+        assertEquals("http://my.host.com/path@test?email=user@test", url);
     }
 }
