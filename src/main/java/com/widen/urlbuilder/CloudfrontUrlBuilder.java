@@ -236,7 +236,7 @@ public class CloudfrontUrlBuilder
      * 
      * @param instant The absolute instant when the URL should expire
      * @return This builder for method chaining
-     * @throws NullPointerException if instant is null
+     * @throws IllegalArgumentException if instant is null
      * @since 3.1.0
      */
     public CloudfrontUrlBuilder expireAt(Instant instant)

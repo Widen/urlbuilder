@@ -93,7 +93,7 @@ public class S3UrlBuilder
 
     private BucketEncoding requestedBucketEncoding = BucketEncoding.DNS;
 
-    private ExpireDateHolder expireDate = new ExpireDateHolder();
+    private final ExpireDateHolder expireDate = new ExpireDateHolder();
 
     private String attachmentFilename;
 
@@ -125,7 +125,7 @@ public class S3UrlBuilder
      * 
      * <p>Supports both relative (duration + unit) and absolute (Instant) expiration times.
      */
-    private class ExpireDateHolder
+    private static class ExpireDateHolder
     {
         long duration;
 
@@ -185,12 +185,9 @@ public class S3UrlBuilder
      */
     public S3UrlBuilder expireIn(long duration, TimeUnit unit)
     {
-        InternalUtils.checkNotNull(duration, "duration");
         InternalUtils.checkNotNull(unit, "unit");
-
         expireDate.duration = duration;
         expireDate.unit = unit;
-
         return this;
     }
 
@@ -207,7 +204,6 @@ public class S3UrlBuilder
     public S3UrlBuilder expireAt(Date date)
     {
         expireDate.instant = date.toInstant();
-
         return this;
     }
 
@@ -219,14 +215,13 @@ public class S3UrlBuilder
      *
      * @param instant The absolute instant when the URL should expire
      * @return This builder for method chaining
-     * @throws NullPointerException if instant is null
-     * @since 0.9.4
+     * @throws IllegalArgumentException if instant is null
+     * @since 3.0.0
      */
     public S3UrlBuilder expireAt(Instant instant)
     {
         InternalUtils.checkNotNull(instant, "instant");
         expireDate.instant = instant;
-
         return this;
     }
 
@@ -289,7 +284,7 @@ public class S3UrlBuilder
     /**
      * Set endpoint based on AWS Region of bucket: `$REGION.s3.s3.amazonaws.com`
      *
-     * @param region
+     * @param region AWS region identifier (e.g., "us-east-1", "eu-west-1")
      * @throws IllegalArgumentException if region is null
      * @see <a href="http://docs.amazonwebservices.com/AmazonS3/latest/dev/LocationSelection.html">S3 Location Selection Docs</a>
      * @see <a href="https://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region">AWS Endpoint Docs</a>
@@ -304,7 +299,7 @@ public class S3UrlBuilder
     /**
      * Reset S3 bucket to new value
      *
-     * @param bucket
+     * @param bucket S3 bucket name
      * @throws IllegalArgumentException if bucket is blank
      */
     public S3UrlBuilder withBucket(String bucket)
@@ -319,7 +314,7 @@ public class S3UrlBuilder
     /**
      * Reset S3 key to new value
      *
-     * @param key
+     * @param key S3 object key
      * @throws IllegalArgumentException if key is blank
      */
     public S3UrlBuilder withKey(String key)
@@ -416,16 +411,14 @@ public class S3UrlBuilder
         if (expireDate.isSet())
         {
             canSign();
-
-            Map<String, String> params = signParams(expireDate.getExpireDate(), canonicalResource, builder);
-
+            Instant expireInstant = expireDate.getExpireDate();
+            InternalUtils.checkNotNull(expireInstant, "expire instant");
+            Map<String, String> params = signParams(expireInstant, canonicalResource, builder);
             builder.addParameters(params);
         }
 
         String result = builder.toString();
-
         builder.clearParameters(); //clean for any subsequent calls to toString()
-
         return result;
     }
 
@@ -477,7 +470,7 @@ public class S3UrlBuilder
     /**
      * Add 'hash' fragment to generated URL. Value does not modify S3 signature.
      *
-     * @param fragment
+     * @param fragment URL fragment identifier
      */
     public S3UrlBuilder withFragment(String fragment)
     {
@@ -497,7 +490,7 @@ public class S3UrlBuilder
     }
 
     /**
-     * Set generation mode to Fully Qualified. This is the default mode; e.g. <code>"http://my.host.com/foo/bar.html"</code>
+     * Set generation mode to Fully Qualified. This is the default mode; e.g. {@code "http://my.host.com/foo/bar.html"}
      * <p>
      * <p>Default mode.
      */
@@ -573,7 +566,7 @@ public class S3UrlBuilder
         stringToSign.append("GET\n"); //http verb
         stringToSign.append("\n"); //content md5
         stringToSign.append("\n"); //content type
-        stringToSign.append(expires + "\n");
+        stringToSign.append(expires).append("\n");
         if (awsSessionToken != null)
         {
             stringToSign.append("x-amz-security-token:").append(awsSessionToken).append("\n");
@@ -594,7 +587,7 @@ public class S3UrlBuilder
 
         String signature = AmazonAWSJavaSDKInternal.sign(stringToSign.toString(), awsPrivateKey);
 
-        HashMap<String, String> params = new HashMap<String, String>();
+        HashMap<String, String> params = new HashMap<>();
         params.put("Signature", signature);
         params.put("Expires", expires);
         params.put("AWSAccessKeyId", awsKey);

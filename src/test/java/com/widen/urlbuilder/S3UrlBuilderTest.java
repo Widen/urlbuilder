@@ -1,13 +1,17 @@
 package com.widen.urlbuilder;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class S3UrlBuilderTest
 {
@@ -143,6 +147,318 @@ class S3UrlBuilderTest
         S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "foo.jpeg").withAttachmentFilename("ƒƒƒƒƒ").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
 
         assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/foo.jpeg?Signature=E2ee6O2hY968RWZKkYTE29ZNCDk%3D&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Expires=1522540800", builder.toString());
+    }
+
+    @Nested
+    class ExpireAtDateTests
+    {
+        @Test
+        void testExpireAtDateSetsCorrectExpiration()
+        {
+            Date fixedDate = new Date(1522540800000L);
+            
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .expireAt(fixedDate)
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+            
+            String url = builder.toString();
+            
+            assertTrue(url.contains("Expires=1522540800"), "URL should contain correct Expires value from Date");
+        }
+
+        @Test
+        void testExpireAtDateReturnsBuilderForChaining()
+        {
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt");
+            
+            S3UrlBuilder result = builder.expireAt(new Date(1522540800000L));
+            
+            assertEquals(builder, result, "expireAt(Date) should return the same builder instance for chaining");
+        }
+
+        @Test
+        void testExpireAtDateProducesConsistentUrls()
+        {
+            Date fixedDate = new Date(1522540800000L);
+            
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .expireAt(fixedDate)
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+            
+            String url1 = builder.toString();
+            String url2 = builder.toString();
+            
+            assertEquals(url1, url2, "Multiple toString() calls with expireAt(Date) should produce identical URLs");
+        }
+
+        @Test
+        void testExpireAtDateWithSsl()
+        {
+            Date fixedDate = new Date(1522540800000L);
+            
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .usingSsl()
+                .expireAt(fixedDate)
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+            
+            String url = builder.toString();
+            
+            assertTrue(url.startsWith("https://"), "URL should use HTTPS");
+            assertTrue(url.contains("Expires=1522540800"), "URL should contain correct Expires value");
+        }
+
+        @Test
+        void testExpireAtDateWithRegion()
+        {
+            Date fixedDate = new Date(1522540800000L);
+            
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .inRegion("eu-west-1")
+                .expireAt(fixedDate)
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+            
+            String url = builder.toString();
+            
+            assertTrue(url.contains("s3.eu-west-1.amazonaws.com"), "URL should contain regional endpoint");
+            assertTrue(url.contains("Expires=1522540800"), "URL should contain correct Expires value");
+        }
+    }
+
+    @Nested
+    class ExpireAtInstantTests
+    {
+        @Test
+        void testExpireAtInstantSetsCorrectExpiration()
+        {
+            Instant fixedInstant = Instant.ofEpochSecond(1522540800L);
+            
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .expireAt(fixedInstant)
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+            
+            String url = builder.toString();
+            
+            assertTrue(url.contains("Expires=1522540800"), "URL should contain correct Expires value from Instant");
+        }
+
+        @Test
+        void testExpireAtInstantReturnsBuilderForChaining()
+        {
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt");
+            
+            S3UrlBuilder result = builder.expireAt(Instant.ofEpochSecond(1522540800L));
+            
+            assertEquals(builder, result, "expireAt(Instant) should return the same builder instance for chaining");
+        }
+
+        @Test
+        void testExpireAtInstantProducesConsistentUrls()
+        {
+            Instant fixedInstant = Instant.ofEpochSecond(1522540800L);
+            
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .expireAt(fixedInstant)
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+            
+            String url1 = builder.toString();
+            String url2 = builder.toString();
+            
+            assertEquals(url1, url2, "Multiple toString() calls with expireAt(Instant) should produce identical URLs");
+        }
+
+        @Test
+        void testExpireAtInstantWithNullThrows()
+        {
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt");
+            
+            assertThrows(IllegalArgumentException.class, () -> builder.expireAt((Instant) null),
+                "expireAt(Instant) should throw IllegalArgumentException for null input");
+        }
+
+        @Test
+        void testExpireAtInstantWithSsl()
+        {
+            Instant fixedInstant = Instant.ofEpochSecond(1522540800L);
+            
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .usingSsl()
+                .expireAt(fixedInstant)
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+            
+            String url = builder.toString();
+            
+            assertTrue(url.startsWith("https://"), "URL should use HTTPS");
+            assertTrue(url.contains("Expires=1522540800"), "URL should contain correct Expires value");
+        }
+
+        @Test
+        void testExpireAtInstantWithRegion()
+        {
+            Instant fixedInstant = Instant.ofEpochSecond(1522540800L);
+            
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .inRegion("us-west-2")
+                .expireAt(fixedInstant)
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+            
+            String url = builder.toString();
+            
+            assertTrue(url.contains("s3.us-west-2.amazonaws.com"), "URL should contain regional endpoint");
+            assertTrue(url.contains("Expires=1522540800"), "URL should contain correct Expires value");
+        }
+
+        @Test
+        void testExpireAtInstantWithFutureTime()
+        {
+            Instant futureInstant = Instant.now().plus(1, ChronoUnit.HOURS);
+            
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .expireAt(futureInstant)
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+            
+            String url = builder.toString();
+            
+            assertTrue(url.contains("Expires=" + futureInstant.getEpochSecond()), 
+                "URL should contain the future Instant's epoch seconds");
+        }
+    }
+
+    @Nested
+    class ExpireAtDateAndInstantEquivalenceTests
+    {
+        @Test
+        void testDateAndInstantProduceSameExpiration()
+        {
+            long epochMillis = 1522540800000L;
+            Date date = new Date(epochMillis);
+            Instant instant = Instant.ofEpochMilli(epochMillis);
+            
+            S3UrlBuilder builderWithDate = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .expireAt(date)
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+            
+            S3UrlBuilder builderWithInstant = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .expireAt(instant)
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+            
+            String urlWithDate = builderWithDate.toString();
+            String urlWithInstant = builderWithInstant.toString();
+            
+            // URLs should be identical since signature depends on expires
+            assertEquals(urlWithDate, urlWithInstant,
+                "Date and Instant with same epoch time should produce identical URLs");
+        }
+
+        @Test
+        void testInstantTakesPrecedenceOverExpireIn()
+        {
+            Instant fixedInstant = Instant.ofEpochSecond(1522540800L);
+            
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .expireIn(1, TimeUnit.HOURS)
+                .expireAt(fixedInstant)
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+            
+            String url = builder.toString();
+            
+            assertTrue(url.contains("Expires=1522540800"), 
+                "expireAt(Instant) should take precedence over expireIn");
+        }
+
+        @Test
+        void testDateTakesPrecedenceOverExpireIn()
+        {
+            Date fixedDate = new Date(1522540800000L);
+            
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .expireIn(1, TimeUnit.HOURS)
+                .expireAt(fixedDate)
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+            
+            String url = builder.toString();
+            
+            assertTrue(url.contains("Expires=1522540800"),
+                "expireAt(Date) should take precedence over expireIn");
+        }
+    }
+
+    @Nested
+    class ExpireInTests
+    {
+        @Test
+        void testExpireInWithHours()
+        {
+            long beforeTime = System.currentTimeMillis() / 1000;
+            
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .expireIn(1, TimeUnit.HOURS)
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+            
+            String url = builder.toString();
+            
+            long afterTime = System.currentTimeMillis() / 1000;
+            
+            String expiresParam = extractParameter(url, "Expires");
+            long expiresValue = Long.parseLong(expiresParam);
+            
+            long expectedMinExpires = beforeTime + 3600;
+            long expectedMaxExpires = afterTime + 3600;
+            
+            assertTrue(expiresValue >= expectedMinExpires && expiresValue <= expectedMaxExpires,
+                "Expires should be approximately 1 hour from now");
+        }
+
+        @Test
+        void testExpireInWithMinutes()
+        {
+            long beforeTime = System.currentTimeMillis() / 1000;
+            
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .expireIn(30, TimeUnit.MINUTES)
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+            
+            String url = builder.toString();
+            
+            long afterTime = System.currentTimeMillis() / 1000;
+            
+            String expiresParam = extractParameter(url, "Expires");
+            long expiresValue = Long.parseLong(expiresParam);
+            
+            long expectedMinExpires = beforeTime + 1800;
+            long expectedMaxExpires = afterTime + 1800;
+            
+            assertTrue(expiresValue >= expectedMinExpires && expiresValue <= expectedMaxExpires,
+                "Expires should be approximately 30 minutes from now");
+        }
+
+        @Test
+        void testExpireInReturnsBuilderForChaining()
+        {
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt");
+            
+            S3UrlBuilder result = builder.expireIn(1, TimeUnit.HOURS);
+            
+            assertEquals(builder, result, "expireIn should return the same builder instance for chaining");
+        }
+    }
+
+    /**
+     * Helper method to extract a parameter value from a URL.
+     */
+    private static String extractParameter(String url, String paramName)
+    {
+        int startIndex = url.indexOf(paramName + "=");
+        if (startIndex == -1)
+        {
+            return null;
+        }
+        startIndex += paramName.length() + 1;
+        int endIndex = url.indexOf("&", startIndex);
+        if (endIndex == -1)
+        {
+            endIndex = url.length();
+        }
+        return url.substring(startIndex, endIndex);
     }
 
 }
