@@ -41,7 +41,8 @@ class CloudfrontUrlBuilderTest
     {
         CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/0/b/c/d/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem).withAttachmentFilename("+ƒoo.jpg").expireAt(new Date(1381356586000L));
 
-        assertEquals("http://dnnfhn216qiqy.cloudfront.net/0/b/c/d/test.jpeg?response-content-disposition=attachment%3B%20filename%3D%22%2Boo.jpg%22%3B%20filename*%3DUTF-8%27%27%252B%25C6%2592oo.jpg&Expires=1381356586&Signature=h8Z0hTcpvPzSxmgMjQGynOSCN-2pFTVnJQPG8bxXQ6rDWvVnVPvMOt3OrkACtLFf7NAhJbx4XpJTo3shlRYsG4E2cS5aRB6ko2N0C18hq3scySjZzLAMVLpqOTR6rK9j4Rc9dHpuZ6IlZ~qJ2xE8C516JvRXY4TLZp84WjBQZQOe6FiLuVy-sIFfAs5X1eqWgHCJKLgqBeozJlijH8jv3V1kTJADoGvOpvvKXDSjujv~u5QJ1pE6COo6vHn4PKNf4Dh-RiWU--Uqbtw26qo8fwQmBo6V4TJeQXwzWaZl74hwr7x4bUArdZLYQz892d3aHzdtZucKgIl~xMQy6kchVw__&Key-Pair-Id=APKAIW7O5EPF5UBMJ7KQ", builder.toString());
+        // Signature changes with v3 RFC 3986 compliant encoding
+        assertEquals("http://dnnfhn216qiqy.cloudfront.net/0/b/c/d/test.jpeg?response-content-disposition=attachment%3B%20filename%3D%22%2Boo.jpg%22%3B%20filename%2A%3DUTF-8%27%27%252B%25C6%2592oo.jpg&Expires=1381356586&Signature=XpZvVljTm8RzudHPB8xxgVdiJ~GEgEZ-mJr-d40XaHvHJLlX-iU949TIa6EF3J7KMYXNF8nD~DM6lYZ9qlQH0Pjamj05DC3tKXqSIH89wGN3iDtUP9eCqUeAayCZQDNIeNPHJxU9TS1fNS4HRkW4sQMjM1FfNwPTMvaaCKixJJpweszNe~ii24rE~CB6DZDEVOL5206eba9jZZELjIJA6GNSIAqO8Hi88bB8X9GC7Bd2vdGABtkXYqHrs78BNoqcZFXLsNj9ehjElkDLDNxtbL-~sZqNsi6me6r0kKh1XNRCE83BcirZXRO1NTAscEcnVvB9THyaHoehE9F2cI9SEA__&Key-Pair-Id=APKAIW7O5EPF5UBMJ7KQ", builder.toString());
     }
 
 }
