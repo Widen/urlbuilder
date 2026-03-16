@@ -15,6 +15,7 @@ package com.widen.urlbuilder;
 
 import java.nio.charset.StandardCharsets;
 import java.security.SignatureException;
+import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
@@ -26,17 +27,61 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
 /**
- * Utility class for constructing syntactically correct S3 URLs using a fluent method-chaining API.
- * It strives simply to be more robust then manually constructing URLs by string concatenation.
- * <p>
- * <p><b>Typical usage:</b>
- * <code>new S3UrlBuilder("urlbuildertests.widen.com", "cat.jpeg").expireIn(1, TimeUnit.HOURS).usingCredentials(awsKey, awsPrivateKey).toString()</code>
- * <b>produces</b> <code>http://urlbuildertests.widen.com.s3.amazonaws.com/cat.jpeg?Expires=1522540800&amp;AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&amp;Signature=fHj68yJqZ1ImRrsgogBHZdb4Ceo%3D</code>
- * <p>
- * <p>The methods {@link #usingBucketVirtualHost}, {@link #usingBucketInPath}, {@link #usingBucketInHostname},
- * control where the bucket name is encoded into the URL.
- *
+ * Utility class for constructing syntactically correct Amazon S3 URLs using a fluent method-chaining API.
+ * 
+ * <p>This builder creates both unsigned and signed (pre-authenticated) S3 URLs. It handles
+ * the complexities of S3 bucket naming, DNS-compatible hostnames, and AWS V2 signature generation.
+ * 
+ * <p><b>Typical usage (signed URL):</b>
+ * <pre>{@code
+ * String signedUrl = new S3UrlBuilder("my-bucket", "path/to/file.pdf")
+ *     .expireIn(1, TimeUnit.HOURS)
+ *     .usingCredentials(awsAccessKey, awsSecretKey)
+ *     .toString();
+ * // Result: http://my-bucket.s3.amazonaws.com/path/to/file.pdf?Expires=...&AWSAccessKeyId=...&Signature=...
+ * }</pre>
+ * 
+ * <p><b>With attachment download:</b>
+ * <pre>{@code
+ * String downloadUrl = new S3UrlBuilder("my-bucket", "documents/report.pdf")
+ *     .usingSsl()
+ *     .withAttachmentFilename("quarterly-report.pdf")
+ *     .expireIn(30, TimeUnit.MINUTES)
+ *     .usingCredentials(awsAccessKey, awsSecretKey)
+ *     .toString();
+ * }</pre>
+ * 
+ * <p><b>With regional endpoint:</b>
+ * <pre>{@code
+ * String url = new S3UrlBuilder("my-eu-bucket", "data/file.json")
+ *     .inRegion("eu-west-1")
+ *     .usingSsl()
+ *     .expireIn(1, TimeUnit.HOURS)
+ *     .usingCredentials(awsAccessKey, awsSecretKey)
+ *     .toString();
+ * }</pre>
+ * 
+ * <p><b>Bucket encoding modes:</b>
+ * <ul>
+ *   <li>{@link #usingBucketInHostname()} (default) - {@code bucket.s3.amazonaws.com/key}</li>
+ *   <li>{@link #usingBucketVirtualHost()} - {@code bucket/key} (bucket as hostname)</li>
+ *   <li>{@link #usingBucketInPath()} - {@code s3.amazonaws.com/bucket/key}</li>
+ * </ul>
+ * 
+ * <p><b>AWS STS Token Support:</b>
+ * <pre>{@code
+ * String url = new S3UrlBuilder("my-bucket", "file.txt")
+ *     .expireIn(1, TimeUnit.HOURS)
+ *     .usingCredentials(accessKey, secretKey, sessionToken)
+ *     .toString();
+ * }</pre>
+ * 
+ * <p>The signature generation uses AWS V2 Signature format with HMAC-SHA1.
+ * 
+ * @see <a href="https://docs.aws.amazon.com/AmazonS3/latest/dev/RESTAuthentication.html">S3 REST Authentication</a>
+ * @see <a href="https://docs.aws.amazon.com/AmazonS3/latest/dev/VirtualHosting.html">S3 Virtual Hosting</a>
  * @version 0.9.3
+ * @since 1.0.0
  */
 public class S3UrlBuilder
 {
@@ -62,22 +107,33 @@ public class S3UrlBuilder
 
     private final UrlBuilder builder = new UrlBuilder();
 
+    /**
+     * Enumeration of bucket encoding strategies for S3 URLs.
+     */
     private enum BucketEncoding
     {
+        /** Bucket as subdomain: bucket.s3.amazonaws.com/key (default) */
         DNS,
+        /** Bucket as hostname: bucket/key */
         VIRTUAL_DNS,
+        /** Bucket in path: s3.amazonaws.com/bucket/key */
         PATH
     }
 
+    /**
+     * Internal class to hold expiration date configuration.
+     * 
+     * <p>Supports both relative (duration + unit) and absolute (Instant) expiration times.
+     */
     private class ExpireDateHolder
     {
         long duration;
 
         TimeUnit unit;
 
-        Date instant;
+        Instant instant;
 
-        Date getExpireDate()
+        Instant getExpireDate()
         {
             if (instant != null)
             {
@@ -91,7 +147,7 @@ public class S3UrlBuilder
 
             long futureMillis = unit.toMillis(duration) + System.currentTimeMillis();
 
-            return new Date(futureMillis);
+            return Instant.ofEpochMilli(futureMillis);
         }
 
         boolean isSet()
@@ -117,11 +173,15 @@ public class S3UrlBuilder
     }
 
     /**
-     * Time generated link is valid for. Expire time is calculated when
-     * #toString() is executed.
+     * Sets the relative duration until the URL expires.
+     * 
+     * <p>The actual expiration time is calculated when {@link #toString()} is called,
+     * allowing the same builder to generate URLs with fresh expiration times.
      *
-     * @param duration
-     * @param unit
+     * @param duration The duration value (must be positive)
+     * @param unit The time unit for the duration
+     * @return This builder for method chaining
+     * @throws NullPointerException if duration or unit is null
      */
     public S3UrlBuilder expireIn(long duration, TimeUnit unit)
     {
@@ -135,23 +195,49 @@ public class S3UrlBuilder
     }
 
     /**
-     * Set absolute time URL will expire. Time is accurate to seconds.
+     * Sets the absolute expiration time for the URL.
+     * 
+     * <p>The expiration time is accurate to seconds (milliseconds are truncated).
      *
-     * @param date
+     * @param date The absolute date/time when the URL should expire
+     * @return This builder for method chaining
+     * @deprecated Use {@link #expireAt(Instant)} instead for better type safety with Java 8+ time API
      */
+    @Deprecated
     public S3UrlBuilder expireAt(Date date)
     {
-        expireDate.instant = date;
+        expireDate.instant = date.toInstant();
 
         return this;
     }
 
     /**
-     * Set AWS account and private key.
-     * Required when a signed URL is generated.
+     * Sets the absolute expiration time for the URL using Java 8+ Instant.
+     * 
+     * <p>The expiration time is accurate to seconds (milliseconds are truncated).
+     * This is the preferred method over {@link #expireAt(Date)}.
      *
-     * @param awsKey
-     * @param awsPrivateKey
+     * @param instant The absolute instant when the URL should expire
+     * @return This builder for method chaining
+     * @throws NullPointerException if instant is null
+     * @since 0.9.4
+     */
+    public S3UrlBuilder expireAt(Instant instant)
+    {
+        InternalUtils.checkNotNull(instant, "instant");
+        expireDate.instant = instant;
+
+        return this;
+    }
+
+    /**
+     * Sets AWS credentials for generating signed URLs.
+     * 
+     * <p>Credentials are required when generating pre-authenticated URLs with an expiration time.
+     *
+     * @param awsKey The AWS access key ID
+     * @param awsPrivateKey The AWS secret access key
+     * @return This builder for method chaining
      * @throws IllegalArgumentException if awsKey or awsPrivateKey is null
      */
     public S3UrlBuilder usingCredentials(String awsKey, String awsPrivateKey)
@@ -166,12 +252,16 @@ public class S3UrlBuilder
     }
 
     /**
-     * Set AWS account, private key and STS (Security Token Service) token
-     * Required when a signed URL is generated.
+     * Sets AWS credentials including an STS session token for generating signed URLs.
+     * 
+     * <p>Use this method when authenticating with temporary credentials from AWS Security
+     * Token Service (STS), such as when using IAM roles or federated access.
      *
-     * @param awsKey
-     * @param awsPrivateKey
-     * @throws IllegalArgumentException if awsKey or awsPrivateKey is null
+     * @param awsKey The AWS access key ID (temporary)
+     * @param awsPrivateKey The AWS secret access key (temporary)
+     * @param awsSessionToken The STS session token
+     * @return This builder for method chaining
+     * @throws IllegalArgumentException if any parameter is null
      */
     public S3UrlBuilder usingCredentials(String awsKey, String awsPrivateKey, String awsSessionToken)
     {
@@ -273,9 +363,21 @@ public class S3UrlBuilder
     }
 
     /**
-     * Construct URL using specific S3 conventions.
+     * Generates the S3 URL (signed or unsigned depending on configuration).
+     * 
+     * <p>The URL generation process:
+     * <ol>
+     *   <li>Determines the hostname based on bucket encoding mode</li>
+     *   <li>Constructs the path with the object key</li>
+     *   <li>Adds any response headers (Content-Disposition, Content-Type)</li>
+     *   <li>If an expiration is set, generates and appends the AWS V2 signature</li>
+     * </ol>
+     * 
+     * <p>The builder can be reused - calling {@code toString()} multiple times will
+     * generate fresh URLs with updated expiration times (if using relative expiration).
      *
-     * @return Generated URL as String
+     * @return The complete S3 URL as a String
+     * @throws IllegalStateException if credentials are required but not set
      */
     public String toString()
     {
@@ -406,6 +508,16 @@ public class S3UrlBuilder
         return this;
     }
 
+    /**
+     * Sets the Content-Type response header hint.
+     * 
+     * <p>When set, S3 will include a {@code response-content-type} parameter that
+     * instructs S3 to return the specified Content-Type header in the response,
+     * overriding the object's stored content type.
+     * 
+     * @param contentType The MIME type for the response (e.g., "application/pdf")
+     * @return This builder for method chaining
+     */
     public S3UrlBuilder withContentType(String contentType)
     {
         this.contentType = contentType;
@@ -437,12 +549,24 @@ public class S3UrlBuilder
     }
 
     /**
-     * AWS V2 Signature
-     * http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html
+     * Generates AWS V2 signature parameters for the URL.
+     * 
+     * <p>The signature is computed according to the AWS V2 Signature specification:
+     * <ol>
+     *   <li>Construct the string to sign (HTTP verb, headers, expiration, canonical resource)</li>
+     *   <li>Compute HMAC-SHA1 using the secret key</li>
+     *   <li>Base64 encode the result</li>
+     * </ol>
+     * 
+     * @param expireTime The expiration time for the signature
+     * @param canonicalResource The canonical S3 resource path
+     * @param builder The URL builder with query parameters to include in signature
+     * @return Map containing Signature, Expires, and AWSAccessKeyId parameters
+     * @see <a href="http://s3.amazonaws.com/doc/s3-developer-guide/RESTAuthentication.html">S3 REST Authentication</a>
      */
-    private Map<String, String> signParams(Date expireTime, String canonicalResource, UrlBuilder builder)
+    private Map<String, String> signParams(Instant expireTime, String canonicalResource, UrlBuilder builder)
     {
-        String expires = String.valueOf(expireTime.getTime() / 1000);
+        String expires = String.valueOf(expireTime.getEpochSecond());
 
         StringBuilder stringToSign = new StringBuilder();
 
@@ -499,8 +623,14 @@ public class S3UrlBuilder
      */
 
     /**
-     * Utilities for working with Amazon S3 bucket names, such as validation and
-     * checked to see if they are compatible with DNS addressing.
+     * Internal utilities for working with Amazon S3 bucket names and signatures.
+     * 
+     * <p>Provides bucket name validation according to S3 naming guidelines and
+     * HMAC-SHA1 signature generation for AWS V2 authentication.
+     * 
+     * <p>Code derived from Amazon AWS Java SDK.
+     * 
+     * @see <a href="https://docs.aws.amazon.com/AmazonS3/latest/dev/BucketRestrictions.html">S3 Bucket Restrictions</a>
      */
     private static class AmazonAWSJavaSDKInternal
     {

@@ -32,6 +32,7 @@ Made with :heart: by Widen.
   * [UrlBuilderQueryParamsTest](/src/test/java/com/widen/urlbuilder/UrlBuilderQueryParamsTest.java) - query parameters
   * [UrlBuilderPortSslTest](/src/test/java/com/widen/urlbuilder/UrlBuilderPortSslTest.java) - port and SSL
   * [UrlBuilderModesTest](/src/test/java/com/widen/urlbuilder/UrlBuilderModesTest.java) - output modes
+  * [UrlBuilderSigningTest](/src/test/java/com/widen/urlbuilder/UrlBuilderSigningTest.java) - URL signing
 
 ## Installation
 
@@ -179,6 +180,128 @@ new CloudfrontUrlBuilder("d1234.cloudfront.net", "files/document.pdf", "APKAEIBA
     .withAttachmentFilename("download.pdf")
     .toString()
 ```
+
+## URL Signing
+
+UrlBuilder supports signing URLs during generation using the `UrlSigner` interface. This is useful for implementing HMAC signatures, RSA signing (like CloudFront), or other URL signing schemes.
+
+### Basic Usage
+
+Sign URLs using a lambda function:
+
+```java
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.util.Base64;
+import java.util.Collections;
+
+String SECRET_KEY = "my-secret-key";
+
+UrlBuilder builder = new UrlBuilder("cdn.example.com", "/videos/movie.mp4");
+builder.addParameter("user", "john");
+builder.usingUrlSigner(context -> {
+    // Sign the complete unsigned URL
+    Mac mac = Mac.getInstance("HmacSHA256");
+    mac.init(new SecretKeySpec(SECRET_KEY.getBytes(), "HmacSHA256"));
+    byte[] hash = mac.doFinal(context.getUrl().getBytes());
+    String signature = Base64.getEncoder().encodeToString(hash);
+    
+    return Collections.singletonMap("signature", signature);
+});
+String signedUrl = builder.toString();
+
+// Result: http://cdn.example.com/videos/movie.mp4?user=john&signature=abc123...
+```
+
+### Reusable Signers
+
+Create reusable signer classes:
+
+```java
+public class HmacUrlSigner implements UrlSigner {
+    private final String secretKey;
+    
+    public HmacUrlSigner(String secretKey) {
+        this.secretKey = secretKey;
+    }
+    
+    @Override
+    public Map<String, String> sign(SigningContext context) {
+        String signature = hmacSha256(context.getUrl(), secretKey);
+        
+        Map<String, String> params = new HashMap<>();
+        params.put("signature", signature);
+        params.put("timestamp", String.valueOf(System.currentTimeMillis() / 1000));
+        return params;
+    }
+}
+
+// Usage
+HmacUrlSigner signer = new HmacUrlSigner("my-secret");
+UrlBuilder builder = new UrlBuilder("cdn.example.com", "/media/video.mp4");
+builder.usingUrlSigner(signer);
+String signedUrl = builder.toString();
+```
+
+### Expiring URLs
+
+Create signed URLs with expiration:
+
+```java
+public class ExpiringHmacSigner implements UrlSigner {
+    private final String secretKey;
+    private final long expirationSeconds;
+    
+    public ExpiringHmacSigner(String secretKey, long expirationSeconds) {
+        this.secretKey = secretKey;
+        this.expirationSeconds = expirationSeconds;
+    }
+    
+    @Override
+    public Map<String, String> sign(SigningContext context) {
+        long expiresAt = System.currentTimeMillis() / 1000 + expirationSeconds;
+        
+        // Sign URL + expiration
+        String toSign = context.getUrl() + expiresAt;
+        String signature = hmacSha256(toSign, secretKey);
+        
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("expires", String.valueOf(expiresAt));
+        params.put("signature", signature);
+        return params;
+    }
+}
+
+// Create URL that expires in 1 hour
+ExpiringHmacSigner signer = new ExpiringHmacSigner("my-secret", 3600);
+UrlBuilder builder = new UrlBuilder("api.example.com", "/v1/data");
+builder.usingUrlSigner(signer);
+String signedUrl = builder.toString();
+```
+
+### Signing Context
+
+The `SigningContext` provides access to URL components:
+
+- `getUrl()` - Complete unsigned URL (what you typically sign)
+- `getProtocol()` - Protocol (http/https)
+- `getHostname()` - Hostname
+- `getPort()` - Port number or -1
+- `getEncodedPath()` - URL-encoded path
+- `getEncodedQuery()` - URL-encoded query string
+- `getFragment()` - Fragment (not typically signed)
+- `isSsl()` - Whether using HTTPS
+- `getGenerationMode()` - URL generation mode
+
+### Best Practices
+
+1. **Keep signers stateless** - Signers should be thread-safe
+2. **Sign the complete URL** - Use `context.getUrl()` in most cases
+3. **Don't include fragments** - Fragments are client-side only
+4. **Use base64/hex encoding** - Signature values are not URL-encoded by default
+5. **Add expiration** - Prevent signature reuse with expiration timestamps
+
+See [`HmacSigningExampleTest`](/src/test/java/com/widen/urlbuilder/examples/HmacSigningExampleTest.java) for more examples.
 
 ## License
 
