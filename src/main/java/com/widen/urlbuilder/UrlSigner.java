@@ -16,7 +16,7 @@ import java.util.Map;
  * 
  * <p>Example usage with lambda:
  * <pre>{@code
- * UrlBuilder builder = UrlBuilder.forHost("cdn.example.com")
+ * UrlBuilder builder = new UrlBuilder().withHostname("cdn.example.com")
  *     .withPath("/videos/movie.mp4")
  *     .usingUrlSigner(context -> {
  *         String signature = hmacSha256(context.getUrl(), secretKey);
@@ -42,11 +42,11 @@ import java.util.Map;
  *     }
  * }
  * 
- * UrlBuilder builder = UrlBuilder.forHost("cdn.example.com")
+ * UrlBuilder builder = new UrlBuilder().withHostname("cdn.example.com")
  *     .usingUrlSigner(new HmacUrlSigner(SECRET_KEY));
  * }</pre>
  * 
- * @since 3.1.0
+ * @since 3.0.0
  */
 @FunctionalInterface
 public interface UrlSigner {

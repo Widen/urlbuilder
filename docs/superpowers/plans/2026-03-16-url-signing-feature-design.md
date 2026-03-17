@@ -69,7 +69,7 @@ import java.util.Map;
  *     });
  * }</pre>
  * 
- * @since 3.1.0
+ * @since 3.0.0
  */
 @FunctionalInterface
 public interface UrlSigner {
@@ -169,7 +169,7 @@ private UrlSigner urlSigner;
  * 
  * @param signer The URL signer, or null to disable signing
  * @return This builder
- * @since 3.1.0
+ * @since 3.0.0
  */
 public UrlBuilder usingUrlSigner(UrlSigner signer) {
     this.urlSigner = signer;
@@ -276,7 +276,7 @@ package com.widen.urlbuilder;
  * Encoder that performs no encoding/decoding.
  * Used for pre-encoded values like signatures.
  * 
- * @since 3.1.0
+ * @since 3.0.0
  */
 public final class NoEncodingEncoder implements Encoder {
     

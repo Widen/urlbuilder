@@ -55,6 +55,7 @@ import java.util.Map.Entry;
  * @see GenerationMode
  */
 public class UrlBuilder {
+
     private boolean ssl = false;
 
     private String hostname;
@@ -352,7 +353,7 @@ public class UrlBuilder {
      *
      * @param signer The URL signer, or null to disable signing
      * @return This builder for chaining
-     * @since 3.1.0
+     * @since 3.0.0
      */
     public UrlBuilder usingUrlSigner(UrlSigner signer) {
         this.urlSigner = signer;

@@ -106,7 +106,7 @@ package com.widen.urlbuilder;
  * builder.addParameter("signature", base64Signature, NoEncodingEncoder.INSTANCE);
  * }</pre>
  * 
- * @since 3.1.0
+ * @since 3.0.0
  */
 public final class NoEncodingEncoder implements Encoder {
     
@@ -314,7 +314,7 @@ import java.util.Map;
  *     .usingUrlSigner(new HmacUrlSigner(SECRET_KEY));
  * }</pre>
  * 
- * @since 3.1.0
+ * @since 3.0.0
  */
 @FunctionalInterface
 public interface UrlSigner {
@@ -573,7 +573,7 @@ package com.widen.urlbuilder;
  * <p>Package-private as this is an internal implementation detail.
  * Users interact with the {@link UrlSigner.SigningContext} interface.
  * 
- * @since 3.1.0
+ * @since 3.0.0
  */
 final class SigningContextImpl implements UrlSigner.SigningContext {
     
@@ -946,7 +946,7 @@ Add method after line 339 (after `usingQueryEncoder()`):
  * 
  * @param signer The URL signer, or null to disable signing
  * @return This builder for chaining
- * @since 3.1.0
+ * @since 3.0.0
  */
 public UrlBuilder usingUrlSigner(UrlSigner signer) {
     this.urlSigner = signer;
