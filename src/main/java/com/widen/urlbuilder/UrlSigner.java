@@ -62,10 +62,10 @@ public interface UrlSigner {
      *   <li>"key-id" - Key identifier used for signing</li>
      * </ul>
      * 
-     * <p>Parameter values will be added using {@link NoEncodingEncoder} by default,
-     * meaning they will not be URL-encoded. If your signature needs encoding,
-     * ensure it is properly encoded before returning it.
-     * 
+     * <p>The returned parameter names and values are appended to the query
+     * string as-is, without any additional URL encoding. Both keys and values
+     * must already be safe for inclusion in a URL query string (encoded if
+     * necessary) before being returned.
      * @param context Contextual information about the URL being signed
      * @return Map of query parameters to append (e.g., "signature" -> "abc123").
      *         Returns empty map if no parameters should be added.
