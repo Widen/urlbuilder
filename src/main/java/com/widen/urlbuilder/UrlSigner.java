@@ -113,7 +113,7 @@ public interface UrlSigner {
          * Multiple path segments are joined with "/" separators.
          * 
          * @return The encoded path (e.g., "/path/to/resource", "/my%20file.txt"),
-         *         or empty string if no path is set
+         *         or "/" if no path is set
          */
         String getEncodedPath();
         
