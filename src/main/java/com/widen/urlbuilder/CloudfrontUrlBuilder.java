@@ -196,7 +196,7 @@ public class CloudfrontUrlBuilder
      * @param duration The duration value
      * @param unit The time unit for the duration
      * @return This builder for method chaining
-     * @throws NullPointerException if duration or unit is null
+     * @throws IllegalArgumentException if {@code unit} is null
      */
     public CloudfrontUrlBuilder expireIn(long duration, TimeUnit unit)
     {
