@@ -220,8 +220,9 @@ public class CloudfrontUrlBuilder
     @Deprecated
     public CloudfrontUrlBuilder expireAt(Date date)
     {
-        expireDate.instant = date.toInstant();
-        return this;
+       InternalUtils.checkNotNull(date, "date");
+       expireDate.instant = date.toInstant();
+       return this;
     }
 
     /**
