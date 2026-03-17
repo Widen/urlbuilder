@@ -19,7 +19,7 @@ package com.widen.urlbuilder;
  * <p>Package-private as this is an internal implementation detail.
  * Users interact with the {@link UrlSigner.SigningContext} interface.
  * 
- * @since 3.1.0
+ * @since 3.0.0
  */
 final class SigningContextImpl implements UrlSigner.SigningContext {
     

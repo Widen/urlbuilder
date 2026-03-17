@@ -21,7 +21,7 @@ package com.widen.urlbuilder;
  *
  * @see PathSegmentEncoder
  * @see QueryParameterEncoder
- * @since 3.1.0
+ * @since 3.0.0
  */
 public final class NoEncodingEncoder implements Encoder
 {
