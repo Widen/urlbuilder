@@ -203,6 +203,7 @@ public class S3UrlBuilder
     @Deprecated
     public S3UrlBuilder expireAt(Date date)
     {
+        InternalUtils.checkNotNull(date, "date");
         expireDate.instant = date.toInstant();
         return this;
     }
