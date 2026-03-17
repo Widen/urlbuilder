@@ -261,7 +261,7 @@ public class CloudfrontUrlBuilder
      * trusted signer credentials provided at construction time.
      * 
      * @return The fully-qualified signed CloudFront URL
-     * @throws NullPointerException if expiration date has not been set
+     * @throws IllegalArgumentException if expiration date has not been set
      */
     @Override
     public String toString()
