@@ -87,7 +87,8 @@ public interface UrlSigner {
          * Returns the protocol (scheme) of the URL.
          * 
          * @return The protocol ("http" or "https"), or empty string if 
-         *         using protocol-relative generation mode
+         *         using protocol-relative or hostname-relative generation modes
+         *         (i.e., when no scheme is present in the URL)
          */
         String getProtocol();
         
