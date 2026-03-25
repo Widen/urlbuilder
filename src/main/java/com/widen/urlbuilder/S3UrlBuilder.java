@@ -181,10 +181,14 @@ public class S3UrlBuilder
      * @param duration The duration value (must be positive)
      * @param unit The time unit for the duration
      * @return This builder for method chaining
-     * @throws NullPointerException if duration or unit is null
+     * @throws IllegalArgumentException if unit is null or duration is not positive
      */
     public S3UrlBuilder expireIn(long duration, TimeUnit unit)
     {
+        if (duration <= 0)
+        {
+            throw new IllegalArgumentException("duration must be positive");
+        }
         InternalUtils.checkNotNull(unit, "unit");
         expireDate.duration = duration;
         expireDate.unit = unit;
