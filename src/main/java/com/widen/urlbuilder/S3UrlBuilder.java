@@ -275,6 +275,7 @@ public class S3UrlBuilder
      * This method is only necessary when using S3 API compatible services like <a href="http://ceph.com/">CEPH</a>
      *
      * @param endpoint fully-quantified DNS hostname of S3 service
+     * @return This builder for method chaining
      */
     public S3UrlBuilder withEndpoint(String endpoint)
     {
@@ -289,6 +290,7 @@ public class S3UrlBuilder
      * @throws IllegalArgumentException if region is null
      * @see <a href="http://docs.amazonwebservices.com/AmazonS3/latest/dev/LocationSelection.html">S3 Location Selection Docs</a>
      * @see <a href="https://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region">AWS Endpoint Docs</a>
+     * @return This builder for method chaining
      */
     public S3UrlBuilder inRegion(String region)
     {
@@ -302,6 +304,7 @@ public class S3UrlBuilder
      *
      * @param bucket S3 bucket name
      * @throws IllegalArgumentException if bucket is blank
+     * @return This builder for method chaining
      */
     public S3UrlBuilder withBucket(String bucket)
     {
@@ -317,6 +320,7 @@ public class S3UrlBuilder
      *
      * @param key S3 object key
      * @throws IllegalArgumentException if key is blank
+     * @return This builder for method chaining
      */
     public S3UrlBuilder withKey(String key)
     {
@@ -331,6 +335,7 @@ public class S3UrlBuilder
      * Set URL generation to use bucket name as hostname.
      *
      * @see <a href="http://docs.amazonwebservices.com/AmazonS3/latest/dev/VirtualHosting.html">S3 Virtual Hosting Docs</a>
+     * @return This builder for method chaining
      */
     public S3UrlBuilder usingBucketVirtualHost()
     {
@@ -340,6 +345,7 @@ public class S3UrlBuilder
 
     /**
      * Set URL generation to encode bucket into path.
+     * @return This builder for method chaining
      */
     public S3UrlBuilder usingBucketInPath()
     {
@@ -351,6 +357,7 @@ public class S3UrlBuilder
      * Set URL generation to prefix bucket to hostname ".s3.amazonaws.com"
      * <p>
      * This is the default generation mode.
+     * @return This builder for method chaining
      */
     public S3UrlBuilder usingBucketInHostname()
     {
@@ -448,6 +455,7 @@ public class S3UrlBuilder
 
     /**
      * Set generated URL to use the "https" scheme.
+     * @return This builder for method chaining
      */
     public S3UrlBuilder usingSsl()
     {
@@ -460,6 +468,7 @@ public class S3UrlBuilder
      * Set generated URL to use "https" scheme.
      *
      * @param useSsl true to use "https" or false to use "http"
+     * @return This builder for method chaining
      */
     public S3UrlBuilder usingSsl(boolean useSsl)
     {
@@ -472,6 +481,7 @@ public class S3UrlBuilder
      * Add 'hash' fragment to generated URL. Value does not modify S3 signature.
      *
      * @param fragment URL fragment identifier
+     * @return This builder for method chaining
      */
     public S3UrlBuilder withFragment(String fragment)
     {
@@ -482,6 +492,7 @@ public class S3UrlBuilder
 
     /**
      * Set generation mode to Protocol Relative; e.g. <code>"//my.host.com/foo/bar.html"</code>
+     * @return This builder for method chaining
      */
     public S3UrlBuilder modeProtocolRelative()
     {
@@ -492,8 +503,9 @@ public class S3UrlBuilder
 
     /**
      * Set generation mode to Fully Qualified. This is the default mode; e.g. {@code "http://my.host.com/foo/bar.html"}
-     * <p>
+     *
      * <p>Default mode.
+     * @return This builder for method chaining
      */
     public S3UrlBuilder modeFullyQualified()
     {
@@ -522,6 +534,7 @@ public class S3UrlBuilder
      * Hint for "attachment" filename. Informs S3 to add "Content-Disposition; attachment" HTTP header.
      *
      * @param filename the filename for the attachment; most browsers will raise a "Save File As..." dialog, or immediately save file
+     * @return This builder for method chaining
      */
     public S3UrlBuilder withAttachmentFilename(String filename)
     {
