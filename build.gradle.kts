@@ -24,14 +24,13 @@ repositories {
 }
 
 dependencies {
-    implementation(libs.bundles.bouncycastle)
+    implementation(libs.bouncycastle.bcprov)
+    implementation(libs.bouncycastle.bcpkix)
 
-    // JUnit 5
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
 
-    // Other test dependencies
     testImplementation(libs.commons.io)
     testImplementation(libs.slf4j.simple)
 }
