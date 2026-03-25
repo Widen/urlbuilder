@@ -137,7 +137,10 @@ public interface UrlSigner {
          * inspect or manipulate individual parameters.
          *
          * <p>If the same key appears multiple times, only the last value is included.
-         * Parameters with null or blank values will have an empty string as the value.
+         * Values may be {@code null} or blank; such values are preserved as-is in
+         * this map. When the URL is serialized, parameters whose value is null or
+         * blank are rendered without an "=" sign (for example, {@code "key"} rather
+         * than {@code "key="}).
          *
          * <p>The returned map is unmodifiable.
          *
