@@ -55,6 +55,7 @@ import java.util.Map.Entry;
  * @see GenerationMode
  */
 public class UrlBuilder {
+
     private boolean ssl = false;
 
     private String hostname;
@@ -74,6 +75,8 @@ public class UrlBuilder {
     private Encoder pathEncoder = new PathSegmentEncoder();
 
     private Encoder queryEncoder = new QueryParameterEncoder();
+
+    private UrlSigner urlSigner;
 
     /**
      * Construct a UrlBuilder with no hostname or path.
@@ -335,6 +338,25 @@ public class UrlBuilder {
      */
     public UrlBuilder usingQueryEncoder(Encoder encoder) {
         this.queryEncoder = encoder;
+        return this;
+    }
+
+    /**
+     * Set a URL signer to sign the URL during toString() generation.
+     * <p>
+     * The signer is invoked after all path segments and query parameters have been added
+     * but before the final URL string is constructed. This allows the signer to inspect
+     * the complete unsigned URL and generate appropriate signature parameters.
+     * <p>
+     * Signature parameters returned by the signer are appended to the URL without
+     * additional encoding, as they are expected to be pre-encoded if necessary.
+     *
+     * @param signer The URL signer, or null to disable signing
+     * @return This builder for chaining
+     * @since 3.0.0
+     */
+    public UrlBuilder usingUrlSigner(UrlSigner signer) {
+        this.urlSigner = signer;
         return this;
     }
 
@@ -668,9 +690,29 @@ public class UrlBuilder {
             }
         }
 
-        if (!queryParams.isEmpty()) {
+        // Build query string - with signing if present
+        String queryString;
+        if (urlSigner != null) {
+            // Build unsigned URL for signing context
+            String unsignedQueryString = buildParams();
+            StringBuilder unsignedUrl = new StringBuilder(url);
+            if (!unsignedQueryString.isEmpty()) {
+                unsignedUrl.append("?").append(unsignedQueryString);
+            }
+            
+            // Invoke signer
+            UrlSigner.SigningContext context = buildSigningContext(unsignedUrl.toString());
+            Map<String, String> signatureParams = urlSigner.sign(context);
+            
+            // Build final query string with signature params (without mutating queryParams list)
+            queryString = buildParamsWithSignature(signatureParams);
+        } else {
+            queryString = buildParams();
+        }
+
+        if (!queryString.isEmpty()) {
             url.append("?");
-            url.append(buildParams());
+            url.append(queryString);
         }
 
         if (StringUtilsInternal.isNotBlank(fragment)) {
@@ -696,6 +738,87 @@ public class UrlBuilder {
         }
 
         return params.toString();
+    }
+
+    /**
+     * Build query string with additional signature parameters WITHOUT mutating queryParams list.
+     */
+    private String buildParamsWithSignature(Map<String, String> signatureParams) {
+        StringBuilder params = new StringBuilder();
+        boolean first = true;
+
+        // Add original query parameters
+        for (QueryParam qp : queryParams) {
+            if (!first) {
+                params.append("&");
+            }
+            params.append(qp.toString());
+            first = false;
+        }
+
+        // Add signature parameters (without encoding - they're pre-encoded)
+        if (signatureParams != null && !signatureParams.isEmpty()) {
+            for (Map.Entry<String, String> entry : signatureParams.entrySet()) {
+                if (entry.getValue() != null) {
+                    if (!first) {
+                        params.append("&");
+                    }
+                    params.append(entry.getKey());
+                    params.append("=");
+                    params.append(entry.getValue());
+                    first = false;
+                }
+            }
+        }
+
+        return params.toString();
+    }
+
+    /**
+     * Build a SigningContext with current URL state.
+     */
+    private UrlSigner.SigningContext buildSigningContext(String unsignedUrl) {
+        String protocol = "";
+        if (GenerationMode.FULLY_QUALIFIED.equals(mode)) {
+            protocol = ssl ? "https" : "http";
+        }
+        
+        String encodedPath;
+        if (!path.isEmpty()) {
+            encodedPath = "/" + StringUtilsInternal.join(encodePathSegments(), "/");
+            if (trailingPathSlash) {
+                encodedPath += "/";
+            }
+        } else {
+            encodedPath = "/";
+        }
+        
+        String encodedQuery = buildParams();
+        
+        // Build raw (unencoded) parameters map
+        Map<String, String> parameters = new LinkedHashMap<>();
+        for (QueryParam qp : queryParams) {
+            parameters.put(qp.key, qp.value);
+        }
+
+        // Return -1 for default ports (80/443) or if port is not set
+        int effectivePort = port;
+        if (port <= 0 || port == 80 || port == 443) {
+            effectivePort = -1;
+        }
+        
+        return new SigningContextImpl(
+            protocol,
+            hostname != null ? hostname : "",
+            effectivePort,
+            encodedPath,
+            encodedQuery,
+            parameters,
+            fragment,
+            unsignedUrl,
+            ssl,
+            mode
+        );
     }
 
     /**
