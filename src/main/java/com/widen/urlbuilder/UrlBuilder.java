@@ -798,7 +798,7 @@ public class UrlBuilder {
         // Build raw (unencoded) parameters map
         Map<String, String> parameters = new LinkedHashMap<>();
         for (QueryParam qp : queryParams) {
-            parameters.put(qp.key, StringUtilsInternal.isNotBlank(qp.value) ? qp.value : "");
+            parameters.put(qp.key, qp.value);
         }
 
         // Return -1 for default ports (80/443) or if port is not set
