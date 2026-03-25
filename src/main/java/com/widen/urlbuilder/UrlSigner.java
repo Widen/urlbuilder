@@ -130,6 +130,24 @@ public interface UrlSigner {
         String getEncodedQuery();
         
         /**
+         * Returns the raw (unencoded) query parameters as a map.
+         *
+         * <p>This provides access to the individual query parameter keys and values
+         * before encoding, which can be useful for signing schemes that need to
+         * inspect or manipulate individual parameters.
+         *
+         * <p>If the same key appears multiple times, only the last value is included.
+         * Parameters with null or blank values will have an empty string as the value.
+         *
+         * <p>The returned map is unmodifiable.
+         *
+         * @return An unmodifiable map of raw query parameter keys to values
+         *         (e.g., {"key1" -> "value1", "key2" -> "value2"}),
+         *         or an empty map if no query parameters are set
+         */
+        Map<String, String> getParameters();
+
+        /**
          * Returns the fragment of the URL.
          * 
          * <p>Note: Fragments are typically not included in signatures since

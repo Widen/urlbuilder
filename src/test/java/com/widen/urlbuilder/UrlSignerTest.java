@@ -66,6 +66,7 @@ class UrlSignerTest {
             @Override public int getPort() { return -1; }
             @Override public String getEncodedPath() { return "/path"; }
             @Override public String getEncodedQuery() { return "key=value"; }
+            @Override public Map<String, String> getParameters() { return Collections.singletonMap("key", "value"); }
             @Override public String getFragment() { return null; }
             @Override public String getUrl() { return "https://example.com/path?key=value"; }
             @Override public boolean isSsl() { return true; }

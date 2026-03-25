@@ -795,6 +795,12 @@ public class UrlBuilder {
         
         String encodedQuery = buildParams();
         
+        // Build raw (unencoded) parameters map
+        Map<String, String> parameters = new LinkedHashMap<>();
+        for (QueryParam qp : queryParams) {
+            parameters.put(qp.key, StringUtilsInternal.isNotBlank(qp.value) ? qp.value : "");
+        }
+
         // Return -1 for default ports (80/443) or if port is not set
         int effectivePort = port;
         if (port <= 0 || port == 80 || port == 443) {
@@ -807,6 +813,7 @@ public class UrlBuilder {
             effectivePort,
             encodedPath,
             encodedQuery,
+            parameters,
             fragment,
             unsignedUrl,
             ssl,

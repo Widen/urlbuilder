@@ -13,6 +13,9 @@
  */
 package com.widen.urlbuilder;
 
+import java.util.Collections;
+import java.util.Map;
+
 /**
  * Immutable implementation of {@link UrlSigner.SigningContext}.
  * 
@@ -28,6 +31,7 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
     private final int port;
     private final String encodedPath;
     private final String encodedQuery;
+    private final Map<String, String> parameters;
     private final String fragment;
     private final String url;
     private final boolean ssl;
@@ -41,19 +45,22 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
      * @param port The port number or -1 for default
      * @param encodedPath The encoded path
      * @param encodedQuery The encoded query string without leading "?"
+     * @param parameters The raw (unencoded) query parameters map
      * @param fragment The fragment without leading "#", or null
      * @param url The complete unsigned URL
      * @param ssl True if using SSL
      * @param generationMode The generation mode
      */
     SigningContextImpl(String protocol, String hostname, int port,
-                       String encodedPath, String encodedQuery, String fragment,
+                       String encodedPath, String encodedQuery, Map<String, String> parameters,
+                       String fragment,
                        String url, boolean ssl, UrlBuilder.GenerationMode generationMode) {
         this.protocol = protocol;
         this.hostname = hostname;
         this.port = port;
         this.encodedPath = encodedPath;
         this.encodedQuery = encodedQuery;
+        this.parameters = parameters != null ? Collections.unmodifiableMap(parameters) : Collections.emptyMap();
         this.fragment = fragment;
         this.url = url;
         this.ssl = ssl;
@@ -83,6 +90,11 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
     @Override
     public String getEncodedQuery() {
         return encodedQuery;
+    }
+    
+    @Override
+    public Map<String, String> getParameters() {
+        return parameters;
     }
     
     @Override
