@@ -192,7 +192,6 @@ Sign URLs using a lambda function:
 ```java
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
-import java.util.Base64;
 import java.util.Collections;
 
 String SECRET_KEY = "my-secret-key";
@@ -204,7 +203,7 @@ builder.usingUrlSigner(context -> {
     Mac mac = Mac.getInstance("HmacSHA256");
     mac.init(new SecretKeySpec(SECRET_KEY.getBytes(), "HmacSHA256"));
     byte[] hash = mac.doFinal(context.getUrl().getBytes());
-    String signature = Base64.getEncoder().encodeToString(hash);
+    String signature = UrlSafeBase64.encode(hash);
     
     return Collections.singletonMap("signature", signature);
 });
