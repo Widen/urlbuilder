@@ -1,5 +1,6 @@
 package com.widen.urlbuilder.examples;
 
+import com.widen.urlbuilder.QueryParameterEncoder;
 import com.widen.urlbuilder.UrlBuilder;
 import com.widen.urlbuilder.UrlSigner;
 import org.junit.jupiter.api.Test;
@@ -29,20 +30,20 @@ class HmacSigningExampleTest {
         UrlBuilder builder = new UrlBuilder("cdn.example.com", "/videos/movie.mp4");
         builder.addParameter("user", "john");
         builder.usingUrlSigner(context -> {
-            String signature = hmacSha256(context.getUrl(), SECRET_KEY);
+            String signature = hmacSha256(context.getUrl() + ",", SECRET_KEY);
             return Collections.singletonMap("signature", signature);
         });
         
         String signedUrl = builder.toString();
         
-        assertTrue(signedUrl.contains("signature="));
+        assertEquals("http://cdn.example.com/videos/movie.mp4?user=john&signature=SYeZxiQq%2Bn5%2FnEs2b%2BgaHWVKB7HebQEwyy%2FM65BpV6M%3D", signedUrl);
         assertTrue(signedUrl.contains("user=john"));
     }
     
     @Test
     void exampleReusableHmacSigner() {
         // Reusable signer class
-        HmacUrlSigner signer = new HmacUrlSigner(SECRET_KEY, "HmacSHA256");
+        HmacUrlSigner signer = new HmacUrlSigner(SECRET_KEY);
         
         UrlBuilder builder1 = new UrlBuilder("cdn.example.com", "/file1.pdf");
         builder1.usingUrlSigner(signer);
@@ -96,7 +97,7 @@ class HmacSigningExampleTest {
             SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
             mac.init(secretKey);
             byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
-            return Base64.getEncoder().encodeToString(hash);
+            return new QueryParameterEncoder().encode(Base64.getEncoder().encodeToString(hash));
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             throw new RuntimeException("HMAC signing failed", e);
         }
@@ -107,11 +108,9 @@ class HmacSigningExampleTest {
      */
     private static class HmacUrlSigner implements UrlSigner {
         private final String secretKey;
-        private final String algorithm;
-        
-        public HmacUrlSigner(String secretKey, String algorithm) {
+
+        public HmacUrlSigner(String secretKey) {
             this.secretKey = secretKey;
-            this.algorithm = algorithm;
         }
         
         @Override
