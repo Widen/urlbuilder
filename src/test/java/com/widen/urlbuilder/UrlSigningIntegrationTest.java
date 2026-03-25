@@ -5,6 +5,7 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
@@ -139,7 +140,7 @@ class UrlSigningIntegrationTest {
             SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
             mac.init(secretKey);
             byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
-            return Base64.getEncoder().encodeToString(hash);
+            return UrlSafeBase64.encode(hash);
         } catch (Exception e) {
             throw new RuntimeException("HMAC failed", e);
         }

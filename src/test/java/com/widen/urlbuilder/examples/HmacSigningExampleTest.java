@@ -2,6 +2,7 @@ package com.widen.urlbuilder.examples;
 
 import com.widen.urlbuilder.QueryParameterEncoder;
 import com.widen.urlbuilder.UrlBuilder;
+import com.widen.urlbuilder.UrlSafeBase64;
 import com.widen.urlbuilder.UrlSigner;
 import org.junit.jupiter.api.Test;
 
@@ -36,7 +37,7 @@ class HmacSigningExampleTest {
         
         String signedUrl = builder.toString();
         
-        assertEquals("http://cdn.example.com/videos/movie.mp4?user=john&signature=SYeZxiQq%2Bn5%2FnEs2b%2BgaHWVKB7HebQEwyy%2FM65BpV6M%3D", signedUrl);
+        assertEquals("http://cdn.example.com/videos/movie.mp4?user=john&signature=SYeZxiQq-n5_nEs2b-gaHWVKB7HebQEwyy_M65BpV6M", signedUrl);
         assertTrue(signedUrl.contains("user=john"));
     }
     
@@ -97,7 +98,7 @@ class HmacSigningExampleTest {
             SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
             mac.init(secretKey);
             byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
-            return new QueryParameterEncoder().encode(Base64.getEncoder().encodeToString(hash));
+            return new QueryParameterEncoder().encode(UrlSafeBase64.encode(hash));
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             throw new RuntimeException("HMAC signing failed", e);
         }
