@@ -67,7 +67,7 @@ public interface UrlSigner {
      * must already be safe for inclusion in a URL query string (encoded if
      * necessary) before being returned.
      * @param context Contextual information about the URL being signed
-     * @return Map of query parameters to append (e.g., "signature" -> "abc123").
+     * @return Map of query parameters to append (e.g., {@code "signature" -> "abc123"}).
      *         Returns empty map if no parameters should be added.
      *         Null values in the map will be ignored during URL construction.
      *         Returns null to skip signing (treated as empty map).
@@ -121,10 +121,10 @@ public interface UrlSigner {
          * Returns the encoded query string of the URL.
          * 
          * <p>The query string will be properly encoded according to RFC 3986 Section 3.4.
-         * Multiple parameters are joined with "&" separators.
+         * Multiple parameters are joined with {@code "&"} separators.
          * 
          * @return The encoded query string without leading "?" 
-         *         (e.g., "key1=value1&key2=value2"), or empty string if no 
+         *         (e.g., {@code "key1=value1&key2=value2"}), or empty string if no 
          *         query parameters are set
          */
         String getEncodedQuery();
