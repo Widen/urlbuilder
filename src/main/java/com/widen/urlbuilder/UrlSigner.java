@@ -142,7 +142,7 @@ public interface UrlSigner {
          * <p>The returned map is unmodifiable.
          *
          * @return An unmodifiable map of raw query parameter keys to values
-         *         (e.g., {"key1" -> "value1", "key2" -> "value2"}),
+         *         (e.g., {@code {"key1" -> "value1", "key2" -> "value2"}}),
          *         or an empty map if no query parameters are set
          */
         Map<String, String> getParameters();
