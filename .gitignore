@@ -12,3 +12,4 @@
 /build
 /gradle.properties
 /out
+.env
