@@ -185,6 +185,8 @@ new CloudfrontUrlBuilder("d1234.cloudfront.net", "files/document.pdf", "APKAEIBA
 
 UrlBuilder supports signing URLs during generation using the `UrlSigner` interface. This is useful for implementing HMAC signatures, RSA signing (like CloudFront), or other URL signing schemes.
 
+The `sign` method receives a `SigningContext` and returns a `Map<String, String>`. Each key/value pair in that map is appended as a query parameter to the final generated URL.
+
 ### Basic Usage
 
 Sign URLs using a lambda function:
@@ -197,32 +199,13 @@ String SECRET_KEY = "my-secret-key";
 UrlBuilder builder = new UrlBuilder("cdn.example.com", "/videos/movie.mp4");
 builder.addParameter("user", "john");
 builder.usingUrlSigner(context -> {
-    String signature = hmacSha256(context.getUrl(), SECRET_KEY);
+    // NOTE: use a strong hash like HmacSHA256 in production
+    String signature = Integer.toHexString((context.getUrl() + SECRET_KEY).hashCode());
     return Collections.singletonMap("signature", signature);
 });
 String signedUrl = builder.toString();
 
 // Result: http://cdn.example.com/videos/movie.mp4?user=john&signature=abc123...
-```
-
-Where `hmacSha256` is a helper that wraps the checked exceptions:
-
-```java
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
-import java.nio.charset.StandardCharsets;
-import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
-
-private static String hmacSha256(String data, String key) {
-    try {
-        Mac mac = Mac.getInstance("HmacSHA256");
-        mac.init(new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-        return UrlSafeBase64.encode(mac.doFinal(data.getBytes(StandardCharsets.UTF_8)));
-    } catch (NoSuchAlgorithmException | InvalidKeyException e) {
-        throw new RuntimeException("HMAC signing failed", e);
-    }
-}
 ```
 
 ### Reusable Signers
