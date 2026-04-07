@@ -45,7 +45,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             "",
             Collections.emptyMap(),
@@ -55,7 +55,7 @@ class SigningContextTest {
             UrlBuilder.GenerationMode.FULLY_QUALIFIED
         );
         
-        assertEquals(-1, context.getPort());
+        assertNull(context.getPort());
     }
     
     @Test
@@ -63,7 +63,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "http",
             "example.com",
-            -1,
+            null,
             "",
             "",
             null,
@@ -85,7 +85,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "",
             "example.com",
-            -1,
+            null,
             "/path",
             "",
             Collections.emptyMap(),
@@ -104,7 +104,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             null,
             "example.com",
-            -1,
+            null,
             "/path",
             "",
             Collections.emptyMap(),
@@ -122,7 +122,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "",
             "example.com",
-            -1,
+            null,
             "/path",
             "",
             Collections.emptyMap(),
@@ -140,7 +140,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             null,
-            -1,
+            null,
             "/path",
             "",
             Collections.emptyMap(),
@@ -158,7 +158,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "",
-            -1,
+            null,
             "/path",
             "",
             Collections.emptyMap(),
@@ -176,7 +176,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             null,
             "",
             Collections.emptyMap(),
@@ -194,7 +194,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "",
             "",
             Collections.emptyMap(),
@@ -212,7 +212,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             null,
             Collections.emptyMap(),
@@ -230,7 +230,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             "",
             Collections.emptyMap(),
@@ -248,7 +248,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             "",
             null,
@@ -267,7 +267,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             "",
             Collections.emptyMap(),
@@ -286,7 +286,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             "",
             Collections.emptyMap(),
@@ -304,7 +304,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             "",
             Collections.emptyMap(),
@@ -322,7 +322,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             "",
             Collections.emptyMap(),
@@ -340,7 +340,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             "",
             Collections.emptyMap(),
@@ -358,7 +358,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             "",
             Collections.emptyMap(),
@@ -378,7 +378,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             "token=abc123",
             params,
@@ -401,7 +401,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             "flag=",
             params,
@@ -424,7 +424,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             "flag",
             params,
@@ -448,7 +448,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             "=value",
             params,
@@ -471,7 +471,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             "=",
             params,
@@ -494,7 +494,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             "key=value",
             params,
@@ -519,7 +519,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             "a=1&b=2&c=3",
             params,
@@ -545,7 +545,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/search",
             "query=hello+world&path=%2Fa%2Fb",
             params,
@@ -565,7 +565,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             "key=value",
             null,
@@ -585,7 +585,7 @@ class SigningContextTest {
         SigningContextImpl context = new SigningContextImpl(
             "https",
             "example.com",
-            -1,
+            null,
             "/path",
             "key=value",
             Collections.emptyMap(),

@@ -102,10 +102,10 @@ public interface UrlSigner {
         /**
          * Returns the port number of the URL.
          * 
-         * @return The port number, or -1 if using the default port
+         * @return The port number, or {@code null} if using the default port
          *         (80 for http, 443 for https)
          */
-        int getPort();
+        Integer getPort();
         
         /**
          * Returns the encoded path of the URL.

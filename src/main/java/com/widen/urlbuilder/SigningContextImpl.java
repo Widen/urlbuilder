@@ -28,7 +28,7 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
     
     private final String protocol;
     private final String hostname;
-    private final int port;
+    private final Integer port;
     private final String encodedPath;
     private final String encodedQuery;
     private final Map<String, String> parameters;
@@ -42,7 +42,7 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
      * 
      * @param protocol The protocol (http/https) or empty string for protocol-relative
      * @param hostname The hostname
-     * @param port The port number or -1 for default
+     * @param port The port number or {@code null} for default
      * @param encodedPath The encoded path
      * @param encodedQuery The encoded query string without leading "?"
      * @param parameters The raw (unencoded) query parameters map
@@ -51,7 +51,7 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
      * @param ssl True if using SSL
      * @param generationMode The generation mode
      */
-    SigningContextImpl(String protocol, String hostname, int port,
+    SigningContextImpl(String protocol, String hostname, Integer port,
                        String encodedPath, String encodedQuery, Map<String, String> parameters,
                        String fragment,
                        String url, boolean ssl, UrlBuilder.GenerationMode generationMode) {
@@ -78,7 +78,7 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
     }
     
     @Override
-    public int getPort() {
+    public Integer getPort() {
         return port;
     }
     

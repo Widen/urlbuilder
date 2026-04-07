@@ -122,6 +122,7 @@ class UrlSignerEdgeCaseTest {
         UrlBuilder builder = new UrlBuilder("example.com", 80, "");
         builder.usingUrlSigner(context -> {
             // Standard port should not appear in URL
+            assertNull(context.getPort());
             assertFalse(context.getUrl().contains(":80"));
             return Collections.singletonMap("sig", "test");
         });
@@ -136,6 +137,7 @@ class UrlSignerEdgeCaseTest {
         builder.usingSsl();
         builder.usingUrlSigner(context -> {
             // Standard HTTPS port should not appear in URL
+            assertNull(context.getPort());
             assertFalse(context.getUrl().contains(":443"));
             return Collections.singletonMap("sig", "test");
         });

@@ -801,11 +801,8 @@ public class UrlBuilder {
             parameters.put(qp.key, qp.value);
         }
 
-        // Return -1 for default ports (80/443) or if port is not set
-        int effectivePort = port;
-        if (port <= 0 || port == 80 || port == 443) {
-            effectivePort = -1;
-        }
+        // Use null for default ports (80/443) or if port is not set
+        Integer effectivePort = (port > 0 && port != 80 && port != 443) ? port : null;
         
         return new SigningContextImpl(
             protocol,

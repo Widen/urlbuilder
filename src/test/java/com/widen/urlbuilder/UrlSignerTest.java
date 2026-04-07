@@ -63,7 +63,7 @@ class UrlSignerTest {
         return new UrlSigner.SigningContext() {
             @Override public String getProtocol() { return "https"; }
             @Override public String getHostname() { return "example.com"; }
-            @Override public int getPort() { return -1; }
+            @Override public Integer getPort() { return null; }
             @Override public String getEncodedPath() { return "/path"; }
             @Override public String getEncodedQuery() { return "key=value"; }
             @Override public Map<String, String> getParameters() { return Collections.singletonMap("key", "value"); }

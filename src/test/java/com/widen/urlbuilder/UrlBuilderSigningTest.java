@@ -130,7 +130,7 @@ class UrlBuilderSigningTest {
                 
                 assertEquals("https", context.getProtocol());
                 assertEquals("example.com", context.getHostname());
-                assertEquals(-1, context.getPort());
+                assertNull(context.getPort());
                 assertEquals("/path/to/resource", context.getEncodedPath());
                 assertTrue(context.getEncodedQuery().contains("key=value"));
                 assertEquals("section", context.getFragment());
