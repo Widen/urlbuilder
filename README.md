@@ -190,8 +190,6 @@ UrlBuilder supports signing URLs during generation using the `UrlSigner` interfa
 Sign URLs using a lambda function:
 
 ```java
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
 import java.util.Collections;
 
 String SECRET_KEY = "my-secret-key";
@@ -199,17 +197,32 @@ String SECRET_KEY = "my-secret-key";
 UrlBuilder builder = new UrlBuilder("cdn.example.com", "/videos/movie.mp4");
 builder.addParameter("user", "john");
 builder.usingUrlSigner(context -> {
-    // Sign the complete unsigned URL
-    Mac mac = Mac.getInstance("HmacSHA256");
-    mac.init(new SecretKeySpec(SECRET_KEY.getBytes(), "HmacSHA256"));
-    byte[] hash = mac.doFinal(context.getUrl().getBytes());
-    String signature = UrlSafeBase64.encode(hash);
-    
+    String signature = hmacSha256(context.getUrl(), SECRET_KEY);
     return Collections.singletonMap("signature", signature);
 });
 String signedUrl = builder.toString();
 
 // Result: http://cdn.example.com/videos/movie.mp4?user=john&signature=abc123...
+```
+
+Where `hmacSha256` is a helper that wraps the checked exceptions:
+
+```java
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+
+private static String hmacSha256(String data, String key) {
+    try {
+        Mac mac = Mac.getInstance("HmacSHA256");
+        mac.init(new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        return UrlSafeBase64.encode(mac.doFinal(data.getBytes(StandardCharsets.UTF_8)));
+    } catch (NoSuchAlgorithmException | InvalidKeyException e) {
+        throw new RuntimeException("HMAC signing failed", e);
+    }
+}
 ```
 
 ### Reusable Signers
