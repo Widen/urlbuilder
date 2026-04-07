@@ -31,13 +31,13 @@ class HmacSigningExampleTest {
         UrlBuilder builder = new UrlBuilder("cdn.example.com", "/videos/movie.mp4");
         builder.addParameter("user", "john");
         builder.usingUrlSigner(context -> {
-            String signature = hmacSha256(context.getUrl() + ",", SECRET_KEY);
+            String signature = hmacSha256(context.getUrl(), SECRET_KEY);
             return Collections.singletonMap("signature", signature);
         });
         
         String signedUrl = builder.toString();
         
-        assertEquals("http://cdn.example.com/videos/movie.mp4?user=john&signature=SYeZxiQq-n5_nEs2b-gaHWVKB7HebQEwyy_M65BpV6M", signedUrl);
+        assertEquals("http://cdn.example.com/videos/movie.mp4?user=john&signature=trISZB-s6WYVxetzmgdIBCOrLj7GF-po2jnmQHAtQjM", signedUrl);
         assertTrue(signedUrl.contains("user=john"));
     }
     
