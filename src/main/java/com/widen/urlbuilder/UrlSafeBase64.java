@@ -17,6 +17,8 @@ public final class UrlSafeBase64
         // utility class
     }
 
+    private static final Base64.Encoder URL_SAFE_ENCODER = Base64.getUrlEncoder().withoutPadding();
+
     /**
      * Encodes the given byte array to a URL-safe Base64 string without padding.
      *
@@ -25,7 +27,7 @@ public final class UrlSafeBase64
      */
     public static String encode(byte[] data)
     {
-        return Base64.getUrlEncoder().withoutPadding().encodeToString(data);
+        return URL_SAFE_ENCODER.encodeToString(data);
     }
 
     /**
