@@ -221,7 +221,7 @@ public class S3UrlBuilder
      * @param instant The absolute instant when the URL should expire
      * @return This builder for method chaining
      * @throws IllegalArgumentException if instant is null
-     * @since 3.0.0
+     * @since 3.1.0
      */
     public S3UrlBuilder expireAt(Instant instant)
     {
