@@ -2,14 +2,14 @@ plugins {
     `java-library`
     `maven-publish`
     signing
-    id("io.github.gradle-nexus.publish-plugin") version "2.0.0"
+    alias(libs.plugins.nexus.publish)
 }
 
 group = "com.widen"
 version = "3.0.0-SNAPSHOT"
 description = "Utility class for constructing syntactically correct HTTP URLs using a fluent method-chaining API"
 
-val repoUrl = "https://github.com/Widen/${project.name}"
+val repoUrl = "https://github.com/Widen/urlbuilder"
 
 java {
     toolchain {
@@ -24,17 +24,16 @@ repositories {
 }
 
 dependencies {
-    implementation("org.bouncycastle:bcprov-jdk15to18:1.83")
-    implementation("org.bouncycastle:bcpkix-jdk15to18:1.83")
+    implementation(libs.bundles.bouncycastle)
 
     // JUnit 5
-    testImplementation(platform("org.junit:junit-bom:5.13.4"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
 
     // Other test dependencies
-    testImplementation("commons-io:commons-io:2.21.0")
-    testImplementation("org.slf4j:slf4j-simple:2.0.17")
+    testImplementation(libs.commons.io)
+    testImplementation(libs.slf4j.simple)
 }
 
 tasks.test {
