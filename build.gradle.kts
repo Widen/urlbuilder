@@ -34,7 +34,7 @@ dependencies {
 
     // Other test dependencies
     testImplementation("commons-io:commons-io:2.14.0")
-    testImplementation("org.slf4j:slf4j-simple:1.7.25")
+    testImplementation("org.slf4j:slf4j-simple:2.0.17")
 }
 
 tasks.test {
