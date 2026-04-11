@@ -24,8 +24,7 @@ repositories {
 }
 
 dependencies {
-    implementation(libs.bouncycastle.bcprov)
-    implementation(libs.bouncycastle.bcpkix)
+    implementation(libs.bundles.bouncycastle)
 
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
