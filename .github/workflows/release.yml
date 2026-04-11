@@ -1,4 +1,5 @@
-name: release
+name: "Publish to Maven Central"
+
 on:
   release:
     types: [published]

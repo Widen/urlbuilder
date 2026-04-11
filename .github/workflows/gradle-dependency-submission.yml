@@ -1,6 +1,6 @@
-# https://community.gradle.org/github-actions/docs/dependency-submission/
+# https://github.com/gradle/actions/blob/main/docs/dependency-submission.md
+# https://github.com/gradle/actions/blob/main/docs/setup-gradle.md#github-dependency-graph-support
 # https://github.com/gradle/github-dependency-graph-gradle-plugin
-# https://github.com/gradle/actions/tree/main/setup-gradle
 
 name: Gradle Dependency Submission
 
