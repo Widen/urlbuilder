@@ -24,8 +24,8 @@ repositories {
 }
 
 dependencies {
-    implementation("org.bouncycastle:bcprov-jdk15to18:1.80")
-    implementation("org.bouncycastle:bcpkix-jdk15to18:1.80")
+    implementation("org.bouncycastle:bcprov-jdk15to18:1.83")
+    implementation("org.bouncycastle:bcpkix-jdk15to18:1.83")
 
     // JUnit 5
     testImplementation(platform("org.junit:junit-bom:5.13.4"))
