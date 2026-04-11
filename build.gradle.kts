@@ -33,7 +33,7 @@ dependencies {
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     // Other test dependencies
-    testImplementation("commons-io:commons-io:2.14.0")
+    testImplementation("commons-io:commons-io:2.21.0")
     testImplementation("org.slf4j:slf4j-simple:2.0.17")
 }
 
