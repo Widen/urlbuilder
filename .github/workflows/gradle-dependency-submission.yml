@@ -1,33 +1,10 @@
-# https://github.com/gradle/actions/blob/main/docs/dependency-submission.md
-# https://github.com/gradle/actions/blob/main/docs/setup-gradle.md#github-dependency-graph-support
-# https://github.com/gradle/github-dependency-graph-gradle-plugin
-
 name: Gradle Dependency Submission
 
 on:
   push:
-    branches: [ "main", "master" ]
-
-permissions:
-  contents: write
+    branches: [main, master]
 
 jobs:
   dependency-submission:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v6
-      - name: Setup Java
-        uses: actions/setup-java@v5
-        with:
-          distribution: corretto
-          java-version: 21
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
-        with:
-          dependency-graph: generate-and-submit
-          build-scan-publish: false
-          build-scan-terms-of-use-url: "https://gradle.com/help/legal-terms-of-use"
-          build-scan-terms-of-use-agree: "yes"
-      - name: Resolve dependencies for dependency graph
-        run: ./gradlew :ForceDependencyResolutionPlugin_resolveAllDependencies
+    uses: Widen/github-actions/.github/workflows/gradle-dependency-submission-workflow.yml@v1
+    secrets: inherit
