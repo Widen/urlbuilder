@@ -1,5 +1,5 @@
 [versions]
-bouncycastle = "1.83"
+bouncycastle = "1.84"
 commons-io = "2.21.0"
 junit = "5.13.4"
 nexus-publish = "2.0.0"
