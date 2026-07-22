@@ -1,6 +1,6 @@
 [versions]
 bouncycastle = "1.83"
-commons-io = "2.21.0"
+commons-io = "2.22.0"
 junit = "5.13.4"
 nexus-publish = "2.0.0"
 slf4j = "2.0.17"
