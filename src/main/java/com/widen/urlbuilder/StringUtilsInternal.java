@@ -167,7 +167,6 @@ public class StringUtilsInternal
     /**
      * <p>Joins the elements of the provided <code>Collection</code> into
      * a single String containing the provided elements.</p>
-     * <p>
      * <p>No delimiter is added before or after the list.
      * A <code>null</code> separator is the same as an empty String ("").</p>
      * <p>
@@ -189,7 +188,6 @@ public class StringUtilsInternal
     /**
      * <p>Joins the elements of the provided <code>Iterator</code> into
      * a single String containing the provided elements.</p>
-     * <p>
      * <p>No delimiter is added before or after the list.
      * A <code>null</code> separator is the same as an empty String ("").</p>
      * <p>
@@ -242,7 +240,6 @@ public class StringUtilsInternal
     /**
      * <p>Gets the <code>toString</code> of an <code>Object</code> returning
      * an empty string ("") if <code>null</code> input.</p>
-     * <p>
      * <pre>
      * ObjectUtils.toString(null)         = ""
      * ObjectUtils.toString("")           = ""

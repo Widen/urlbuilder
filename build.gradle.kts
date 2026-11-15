@@ -26,18 +26,23 @@ repositories {
 dependencies {
     implementation(libs.bundles.bouncycastle)
 
-    // JUnit 5
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
 
-    // Other test dependencies
     testImplementation(libs.commons.io)
     testImplementation(libs.slf4j.simple)
 }
 
 tasks.test {
     useJUnitPlatform()
+    testLogging {
+        events("started", "passed", "skipped", "failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+    }
 }
 
 nexusPublishing {
