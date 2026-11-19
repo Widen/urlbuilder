@@ -122,6 +122,11 @@ class QueryParameterEncoderTest {
     }
 
     @Test
+    void decodeKeepsUnencodedSupplementaryCharacters() {
+        assertEquals("a 😀é", encoder.decode("a%20😀é"));
+    }
+
+    @Test
     void roundTripEncodeDecode() {
         String[] testStrings = {
             "simple",
