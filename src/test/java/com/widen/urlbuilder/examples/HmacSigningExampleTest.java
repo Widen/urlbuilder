@@ -117,10 +117,7 @@ class HmacSigningExampleTest {
         public Map<String, String> sign(SigningContext context) {
             String signature = hmacSha256(context.getUrl(), secretKey);
             
-            Map<String, String> params = new HashMap<>();
-            params.put("signature", signature);
-            params.put("timestamp", String.valueOf(System.currentTimeMillis() / 1000));
-            return params;
+            return Collections.singletonMap("signature", signature);
         }
     }
     
@@ -140,8 +137,8 @@ class HmacSigningExampleTest {
         public Map<String, String> sign(SigningContext context) {
             long expiresAt = System.currentTimeMillis() / 1000 + expirationSeconds;
             
-            // Sign URL + expiration timestamp
-            String toSign = context.getUrl() + expiresAt;
+            // The separator keeps two different URL and expiration pairs from producing the same signed text
+            String toSign = context.getUrl() + "\n" + expiresAt;
             String signature = hmacSha256(toSign, secretKey);
             
             Map<String, String> params = new LinkedHashMap<>();

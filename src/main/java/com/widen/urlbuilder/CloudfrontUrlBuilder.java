@@ -22,7 +22,7 @@ import java.util.concurrent.TimeUnit;
  * <pre>{@code
  * PrivateKey privateKey = CloudfrontPrivateKeyUtils.fromPemString(pemString);
  * 
- * String signedUrl = new CloudfrontUrlBuilder("d123.cloudfront.net", "/videos/movie.mp4", "AKIAEXAMPLE", privateKey)
+ * String signedUrl = new CloudfrontUrlBuilder("d123.cloudfront.net", "/videos/movie.mp4", "APKAEIBAERJR2EXAMPLE", privateKey)
  *     .withSsl()
  *     .expireIn(1, TimeUnit.HOURS)
  *     .toString();
@@ -45,6 +45,9 @@ import java.util.concurrent.TimeUnit;
  * </ul>
  * 
  * <p>This class uses the generic {@link UrlSigner} mechanism internally for URL signing.
+ *
+ * <p>Once a builder is configured, concurrent calls to {@link #toString()} are safe.
+ * The configuration methods are not synchronized.
  * 
  * @see CloudfrontPrivateKeyUtils
  * @see UrlSigner
@@ -166,7 +169,7 @@ public class CloudfrontUrlBuilder
      * signature calculation.
      * 
      * @param key The parameter name
-     * @param value The parameter value
+     * @param value The parameter value, or null to add the name alone
      * @return This builder for method chaining
      */
     public CloudfrontUrlBuilder addParameter(String key, String value)

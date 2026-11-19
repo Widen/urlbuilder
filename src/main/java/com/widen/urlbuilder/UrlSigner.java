@@ -34,10 +34,11 @@ import java.util.Map;
  *     }
  *     
  *     public Map<String, String> sign(SigningContext context) {
- *         String signature = hmacSha256(context.getUrl(), secretKey);
+ *         long expires = System.currentTimeMillis() / 1000 + 3600;
+ *         String signature = hmacSha256(context.getUrl() + "\n" + expires, secretKey);
  *         Map<String, String> params = new HashMap<>();
+ *         params.put("expires", String.valueOf(expires));
  *         params.put("signature", signature);
- *         params.put("expires", String.valueOf(System.currentTimeMillis() / 1000 + 3600));
  *         return params;
  *     }
  * }
@@ -102,8 +103,9 @@ public interface UrlSigner {
         /**
          * Returns the port number of the URL.
          * 
-         * @return The port number, or {@code null} if using the default port
-         *         (80 for http, 443 for https)
+         * @return The port set on the builder, or {@code null} when it is unset,
+         *         80, or 443, whichever scheme the URL uses. A hostname-relative
+         *         URL omits the port, but the port is still reported here.
          */
         Integer getPort();
         
