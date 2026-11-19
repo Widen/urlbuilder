@@ -1,6 +1,5 @@
 package com.widen.urlbuilder.examples;
 
-import com.widen.urlbuilder.QueryParameterEncoder;
 import com.widen.urlbuilder.UrlBuilder;
 import com.widen.urlbuilder.UrlSafeBase64;
 import com.widen.urlbuilder.UrlSigner;
@@ -98,7 +97,7 @@ class HmacSigningExampleTest {
             SecretKeySpec secretKey = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
             mac.init(secretKey);
             byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
-            return new QueryParameterEncoder().encode(UrlSafeBase64.encode(hash));
+            return UrlSafeBase64.encode(hash);
         } catch (NoSuchAlgorithmException | InvalidKeyException e) {
             throw new RuntimeException("HMAC signing failed", e);
         }

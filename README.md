@@ -185,7 +185,7 @@ new CloudfrontUrlBuilder("d1234.cloudfront.net", "files/document.pdf", "APKAEIBA
 
 UrlBuilder supports signing URLs during generation using the `UrlSigner` interface. This is useful for implementing HMAC signatures, RSA signing (like CloudFront), or other URL signing schemes.
 
-The `sign` method receives a `SigningContext` and returns a `Map<String, String>`. Each key/value pair in that map is appended as a query parameter to the final generated URL.
+The `sign` method receives a `SigningContext` and returns a `Map<String, String>`. Each key/value pair in that map is appended as a query parameter to the final generated URL and URL encoded like any other parameter.
 
 ### Basic Usage
 
@@ -293,7 +293,7 @@ The `SigningContext` provides access to URL components:
 1. **Keep signers stateless** - Signers should be thread-safe
 2. **Sign the complete URL** - Use `context.getUrl()` in most cases
 3. **Don't include fragments** - Fragments are client-side only
-4. **Use base64/hex encoding** - Signature values are not URL-encoded by default
+4. **Return unencoded values** - The builder URL-encodes the parameters a signer returns, so a value that is already percent-encoded is encoded twice
 5. **Add expiration** - Prevent signature reuse with expiration timestamps
 
 See [`HmacSigningExampleTest`](/src/test/java/com/widen/urlbuilder/examples/HmacSigningExampleTest.java) for more examples.
