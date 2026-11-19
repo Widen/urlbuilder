@@ -2,6 +2,7 @@ package com.widen.urlbuilder;
 
 import java.io.IOException;
 import java.security.PrivateKey;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -38,20 +39,20 @@ class CloudfrontUrlBuilderTest
     @Test
     void secondUseOfBuilderEqualsNewed()
     {
-        CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/0/b/c/d/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem).withAttachmentFilename("test.jpg").expireAt(new Date(1381356586000L));
+        CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/0/b/c/d/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem).withAttachmentFilename("test.jpg").expireAt(Instant.ofEpochSecond(1381356586L));
         builder.toString();
 
         builder.withKey("/0/b/c/d/test2.jpeg");
         String secondUseBuilderValue = builder.toString();
 
-        CloudfrontUrlBuilder builder2 = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/0/b/c/d/test2.jpeg", "APKAIW7O5EPF5UBMJ7KQ", der, "BC").withAttachmentFilename("test.jpg").expireAt(new Date(1381356586000L));
+        CloudfrontUrlBuilder builder2 = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/0/b/c/d/test2.jpeg", "APKAIW7O5EPF5UBMJ7KQ", der, "BC").withAttachmentFilename("test.jpg").expireAt(Instant.ofEpochSecond(1381356586L));
         assertEquals(secondUseBuilderValue, builder2.toString());
     }
 
     @Test
     void testNonAsciiCharsInAttachment()
     {
-        CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/0/b/c/d/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem).withAttachmentFilename("+ƒoo.jpg").expireAt(new Date(1381356586000L));
+        CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/0/b/c/d/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem).withAttachmentFilename("+ƒoo.jpg").expireAt(Instant.ofEpochSecond(1381356586L));
 
         // Signature changes with v3 RFC 3986 compliant encoding
         assertEquals("http://dnnfhn216qiqy.cloudfront.net/0/b/c/d/test.jpeg?response-content-disposition=attachment%3B%20filename%3D%22%2Boo.jpg%22%3B%20filename%2A%3DUTF-8%27%27%252B%25C6%2592oo.jpg&Expires=1381356586&Signature=XpZvVljTm8RzudHPB8xxgVdiJ~GEgEZ-mJr-d40XaHvHJLlX-iU949TIa6EF3J7KMYXNF8nD~DM6lYZ9qlQH0Pjamj05DC3tKXqSIH89wGN3iDtUP9eCqUeAayCZQDNIeNPHJxU9TS1fNS4HRkW4sQMjM1FfNwPTMvaaCKixJJpweszNe~ii24rE~CB6DZDEVOL5206eba9jZZELjIJA6GNSIAqO8Hi88bB8X9GC7Bd2vdGABtkXYqHrs78BNoqcZFXLsNj9ehjElkDLDNxtbL-~sZqNsi6me6r0kKh1XNRCE83BcirZXRO1NTAscEcnVvB9THyaHoehE9F2cI9SEA__&Key-Pair-Id=APKAIW7O5EPF5UBMJ7KQ", builder.toString());
@@ -60,14 +61,14 @@ class CloudfrontUrlBuilderTest
     @Test
     void testExpireInWithHours()
     {
-        long beforeTime = System.currentTimeMillis() / 1000;
+        long beforeTime = Instant.now().getEpochSecond();
         
         CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
-            .expireIn(1, TimeUnit.HOURS);
+            .expireIn(Duration.ofHours(1));
         
         String url = builder.toString();
         
-        long afterTime = System.currentTimeMillis() / 1000;
+        long afterTime = Instant.now().getEpochSecond();
         
         // Extract Expires value from URL
         String expiresParam = extractParameter(url, "Expires");
@@ -86,14 +87,14 @@ class CloudfrontUrlBuilderTest
     @Test
     void testExpireInWithMinutes()
     {
-        long beforeTime = System.currentTimeMillis() / 1000;
+        long beforeTime = Instant.now().getEpochSecond();
         
         CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
-            .expireIn(30, TimeUnit.MINUTES);
+            .expireIn(Duration.ofMinutes(30));
         
         String url = builder.toString();
         
-        long afterTime = System.currentTimeMillis() / 1000;
+        long afterTime = Instant.now().getEpochSecond();
         
         String expiresParam = extractParameter(url, "Expires");
         long expiresValue = Long.parseLong(expiresParam);
@@ -107,16 +108,16 @@ class CloudfrontUrlBuilderTest
     }
 
     @Test
-    void testExpireInWithSeconds()
+    void testExpireInWithTimeUnit()
     {
-        long beforeTime = System.currentTimeMillis() / 1000;
+        long beforeTime = Instant.now().getEpochSecond();
         
         CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
             .expireIn(300, TimeUnit.SECONDS);
         
         String url = builder.toString();
         
-        long afterTime = System.currentTimeMillis() / 1000;
+        long afterTime = Instant.now().getEpochSecond();
         
         String expiresParam = extractParameter(url, "Expires");
         long expiresValue = Long.parseLong(expiresParam);
@@ -132,14 +133,14 @@ class CloudfrontUrlBuilderTest
     @Test
     void testExpireInWithDays()
     {
-        long beforeTime = System.currentTimeMillis() / 1000;
+        long beforeTime = Instant.now().getEpochSecond();
         
         CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
-            .expireIn(7, TimeUnit.DAYS);
+            .expireIn(Duration.ofDays(7));
         
         String url = builder.toString();
         
-        long afterTime = System.currentTimeMillis() / 1000;
+        long afterTime = Instant.now().getEpochSecond();
         
         String expiresParam = extractParameter(url, "Expires");
         long expiresValue = Long.parseLong(expiresParam);
@@ -156,7 +157,7 @@ class CloudfrontUrlBuilderTest
     void testExpireInCalculatesNewExpirationOnEachToString() throws InterruptedException
     {
         CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
-            .expireIn(1, TimeUnit.HOURS);
+            .expireIn(Duration.ofHours(1));
         
         String url1 = builder.toString();
         String expires1 = extractParameter(url1, "Expires");
@@ -175,7 +176,7 @@ class CloudfrontUrlBuilderTest
     {
         CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem);
         
-        CloudfrontUrlBuilder result = builder.expireIn(1, TimeUnit.HOURS);
+        CloudfrontUrlBuilder result = builder.expireIn(Duration.ofHours(1));
         
         assertEquals(builder, result, "expireIn should return the same builder instance for chaining");
     }
@@ -183,11 +184,11 @@ class CloudfrontUrlBuilderTest
     @Test
     void testExpireAtReplacesEarlierExpireIn()
     {
-        Date fixedDate = new Date(1381356586000L);
+        Instant fixedInstant = Instant.ofEpochSecond(1381356586L);
 
         CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
-            .expireIn(1, TimeUnit.HOURS)
-            .expireAt(fixedDate);
+            .expireIn(Duration.ofHours(1))
+            .expireAt(fixedInstant);
 
         long expiresValue = Long.parseLong(extractParameter(builder.toString(), "Expires"));
 
@@ -197,11 +198,11 @@ class CloudfrontUrlBuilderTest
     @Test
     void testExpireInReplacesEarlierExpireAt()
     {
-        long beforeTime = System.currentTimeMillis() / 1000;
+        long beforeTime = Instant.now().getEpochSecond();
 
         CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
-            .expireAt(new Date(1381356586000L))
-            .expireIn(1, TimeUnit.HOURS);
+            .expireAt(Instant.ofEpochSecond(1381356586L))
+            .expireIn(Duration.ofHours(1));
 
         long expiresValue = Long.parseLong(extractParameter(builder.toString(), "Expires"));
 
@@ -213,15 +214,16 @@ class CloudfrontUrlBuilderTest
     {
         CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem);
 
+        assertThrows(IllegalArgumentException.class, () -> builder.expireIn(Duration.ZERO));
+        assertThrows(IllegalArgumentException.class, () -> builder.expireIn(Duration.ofHours(-1)));
         assertThrows(IllegalArgumentException.class, () -> builder.expireIn(0, TimeUnit.HOURS));
-        assertThrows(IllegalArgumentException.class, () -> builder.expireIn(-1, TimeUnit.HOURS));
     }
 
     @Test
     void testExpireInUrlContainsRequiredParameters()
     {
         CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
-            .expireIn(1, TimeUnit.HOURS);
+            .expireIn(Duration.ofHours(1));
         
         String url = builder.toString();
         
@@ -235,7 +237,7 @@ class CloudfrontUrlBuilderTest
     {
         CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
             .withSsl()
-            .expireIn(1, TimeUnit.HOURS);
+            .expireIn(Duration.ofHours(1));
         
         String url = builder.toString();
         
@@ -456,7 +458,7 @@ class CloudfrontUrlBuilderTest
             Instant fixedInstant = Instant.ofEpochSecond(1381356586L);
             
             CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
-                .expireIn(1, TimeUnit.HOURS)
+                .expireIn(Duration.ofHours(1))
                 .expireAt(fixedInstant);
             
             String url = builder.toString();

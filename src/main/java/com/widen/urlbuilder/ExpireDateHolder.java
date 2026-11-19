@@ -1,7 +1,7 @@
 package com.widen.urlbuilder;
 
+import java.time.Duration;
 import java.time.Instant;
-import java.util.concurrent.TimeUnit;
 
 /**
  * The expiry of a signed URL: either a duration measured from the moment the URL is generated, or a fixed instant.
@@ -9,22 +9,19 @@ import java.util.concurrent.TimeUnit;
  */
 class ExpireDateHolder
 {
-    private long duration;
-
-    private TimeUnit unit;
+    private Duration duration;
 
     private Instant instant;
 
-    void expireIn(long duration, TimeUnit unit)
+    void expireIn(Duration duration)
     {
-        if (duration <= 0)
+        InternalUtils.checkNotNull(duration, "duration");
+        if (duration.isZero() || duration.isNegative())
         {
             throw new IllegalArgumentException("duration must be positive");
         }
-        InternalUtils.checkNotNull(unit, "unit");
 
         this.duration = duration;
-        this.unit = unit;
         this.instant = null;
     }
 
@@ -33,12 +30,12 @@ class ExpireDateHolder
         InternalUtils.checkNotNull(instant, "instant");
 
         this.instant = instant;
-        this.unit = null;
+        this.duration = null;
     }
 
     boolean isSet()
     {
-        return instant != null || unit != null;
+        return instant != null || duration != null;
     }
 
     /**
@@ -51,11 +48,11 @@ class ExpireDateHolder
             return instant;
         }
 
-        if (unit == null)
+        if (duration == null)
         {
             return null;
         }
 
-        return Instant.ofEpochMilli(unit.toMillis(duration) + System.currentTimeMillis());
+        return Instant.now().plus(duration);
     }
 }
