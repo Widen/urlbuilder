@@ -48,15 +48,26 @@ class UrlBuilderSigningTest {
     }
     
     @Test
-    void testSignerWithSpecialCharactersNotEncoded() {
+    void testSignerOutputIsEncoded() {
         UrlBuilder builder = new UrlBuilder("example.com", null)
             .usingUrlSigner(context -> {
-                return Collections.singletonMap("sig", "abc+123=def/xyz-_~");
+                return Collections.singletonMap("sig key", "a-_~.+/=&admin=true#x");
             });
-        
-        String url = builder.toString();
-        assertTrue(url.contains("sig=abc+123=def/xyz-_~"), 
-            "Signature should not be URL encoded - special chars must be preserved");
+
+        assertEquals("http://example.com/?sig%20key=a-_~.%2B%2F%3D%26admin%3Dtrue%23x", builder.toString());
+    }
+
+    @Test
+    void testSignerOutputWithBlankKeyIsIgnored() {
+        UrlBuilder builder = new UrlBuilder("example.com", "/test")
+            .usingUrlSigner(context -> {
+                Map<String, String> params = new HashMap<>();
+                params.put(null, "a");
+                params.put(" ", "b");
+                return params;
+            });
+
+        assertEquals("http://example.com/test", builder.toString());
     }
     
     @Test

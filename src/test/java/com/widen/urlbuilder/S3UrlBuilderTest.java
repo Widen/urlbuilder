@@ -1,9 +1,15 @@
 package com.widen.urlbuilder;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Base64;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
@@ -147,6 +153,45 @@ class S3UrlBuilderTest
         S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "foo.jpeg").withAttachmentFilename("ƒƒƒƒƒ").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
 
         assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/foo.jpeg?Signature=E2ee6O2hY968RWZKkYTE29ZNCDk%3D&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Expires=1522540800", builder.toString());
+    }
+
+    @Test
+    void testSignatureCoversAllResponseParameters() throws Exception
+    {
+        String secretKey = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY";
+
+        S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
+            .withAttachmentFilename("a.pdf")
+            .withContentType("application/pdf")
+            .expireAt(Instant.ofEpochSecond(1522540800L))
+            .usingCredentials("AKIAIOSFODNN7EXAMPLE", secretKey);
+
+        String stringToSign = "GET\n\n\n1522540800\n/test-bucket/test-key.txt"
+            + "?response-content-disposition=attachment; filename=\"a.pdf\""
+            + "&response-content-type=application/pdf";
+
+        Mac mac = Mac.getInstance("HmacSHA1");
+        mac.init(new SecretKeySpec(secretKey.getBytes(StandardCharsets.UTF_8), "HmacSHA1"));
+        String expectedSignature = Base64.getEncoder().encodeToString(mac.doFinal(stringToSign.getBytes(StandardCharsets.UTF_8)));
+
+        String signature = URLDecoder.decode(extractParameter(builder.toString(), "Signature"), "UTF-8");
+
+        assertEquals(expectedSignature, signature);
+    }
+
+    @Test
+    void testFailedToStringLeavesNoParametersBehind()
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
+            .withContentType("application/pdf")
+            .expireAt(Instant.ofEpochSecond(1522540800L));
+
+        assertThrows(IllegalStateException.class, builder::toString);
+
+        String url = builder.usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY").toString();
+
+        assertEquals(url.indexOf("response-content-type="), url.lastIndexOf("response-content-type="),
+            "response-content-type should appear once");
     }
 
     @Nested
@@ -350,7 +395,7 @@ class S3UrlBuilderTest
         }
 
         @Test
-        void testInstantTakesPrecedenceOverExpireIn()
+        void testInstantReplacesEarlierExpireIn()
         {
             Instant fixedInstant = Instant.ofEpochSecond(1522540800L);
             
@@ -362,11 +407,11 @@ class S3UrlBuilderTest
             String url = builder.toString();
             
             assertTrue(url.contains("Expires=1522540800"), 
-                "expireAt(Instant) should take precedence over expireIn");
+                "the later expireAt(Instant) should replace expireIn");
         }
 
         @Test
-        void testDateTakesPrecedenceOverExpireIn()
+        void testDateReplacesEarlierExpireIn()
         {
             Date fixedDate = new Date(1522540800000L);
             
@@ -378,7 +423,7 @@ class S3UrlBuilderTest
             String url = builder.toString();
             
             assertTrue(url.contains("Expires=1522540800"),
-                "expireAt(Date) should take precedence over expireIn");
+                "the later expireAt(Date) should replace expireIn");
         }
     }
 
@@ -439,6 +484,15 @@ class S3UrlBuilderTest
             S3UrlBuilder result = builder.expireIn(1, TimeUnit.HOURS);
             
             assertEquals(builder, result, "expireIn should return the same builder instance for chaining");
+        }
+
+        @Test
+        void testExpireInRejectsNonPositiveDuration()
+        {
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt");
+
+            assertThrows(IllegalArgumentException.class, () -> builder.expireIn(0, TimeUnit.HOURS));
+            assertThrows(IllegalArgumentException.class, () -> builder.expireIn(-1, TimeUnit.HOURS));
         }
     }
 
