@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -39,7 +40,7 @@ class UrlSigningIntegrationTest {
             
             // Generate signature
             String signature = hmacSha256(context.getUrl(), SECRET_KEY);
-            long expires = System.currentTimeMillis() / 1000 + 3600;
+            long expires = Instant.now().plusSeconds(3600).getEpochSecond();
             
             Map<String, String> params = new LinkedHashMap<>();
             params.put("expires", String.valueOf(expires));

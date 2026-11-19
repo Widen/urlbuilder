@@ -58,6 +58,86 @@ class UrlBuilderSigningTest {
     }
 
     @Test
+    void testSignerCanAddParametersThatTheSignatureCovers() {
+        UrlBuilder builder = new UrlBuilder("example.com", "/test")
+            .addParameter("user", "john")
+            .usingUrlSigner(context -> {
+                context.addParameter("expires", 1795127806L).addParameter("", "ignored");
+
+                assertEquals("http://example.com/test?user=john&expires=1795127806", context.getStringToSign());
+                assertEquals(context.getStringToSign(), context.getUrl());
+                assertEquals("user=john&expires=1795127806", context.getEncodedQuery());
+                assertEquals("1795127806", context.getParameters().get("expires"));
+
+                return Collections.singletonMap("signature", "sig-of-" + context.getParameters().size());
+            });
+
+        String signedUrl = "http://example.com/test?user=john&expires=1795127806&signature=sig-of-2";
+        assertEquals(signedUrl, builder.toString());
+        assertEquals(signedUrl, builder.toString(), "the added parameter is not kept on the builder");
+    }
+
+    @Test
+    void testSignerCanAddSeveralParametersAtOnce() {
+        UrlBuilder builder = new UrlBuilder("example.com", "/test")
+            .usingUrlSigner(context -> {
+                Map<String, Object> signed = new LinkedHashMap<>();
+                signed.put("expires", 1795127806L);
+                signed.put("key-id", "k2");
+                context.addParameters(signed);
+
+                assertEquals("http://example.com/test?expires=1795127806&key-id=k2", context.getStringToSign());
+
+                return Collections.singletonMap("signature", "s");
+            });
+
+        assertEquals("http://example.com/test?expires=1795127806&key-id=k2&signature=s", builder.toString());
+    }
+
+    @Test
+    void testSignerCanAddTheFirstParameter() {
+        UrlBuilder builder = new UrlBuilder("example.com", "/test")
+            .usingUrlSigner(context -> {
+                context.addParameter("key id", "a&b");
+
+                assertEquals("http://example.com/test?key%20id=a%26b", context.getUrl());
+
+                return Collections.singletonMap("signature", "s");
+            });
+
+        assertEquals("http://example.com/test?key%20id=a%26b&signature=s", builder.toString());
+    }
+
+    @Test
+    void testPathAndQueryOmitsTheHostAndIncludesAddedParameters() {
+        UrlBuilder withParameters = new UrlBuilder("example.com", "/a b/c")
+            .addParameter("user", "john")
+            .usingUrlSigner(context -> {
+                context.addParameter("expires", 1795127806L);
+                return Collections.singletonMap("signed", context.getEncodedPathAndQuery());
+            });
+        UrlBuilder withoutParameters = new UrlBuilder("example.com", "/test")
+            .usingUrlSigner(context -> Collections.singletonMap("signed", context.getEncodedPathAndQuery()));
+
+        assertEquals("http://example.com/a%20b/c?user=john&expires=1795127806"
+            + "&signed=%2Fa%2520b%2Fc%3Fuser%3Djohn%26expires%3D1795127806", withParameters.toString());
+        assertEquals("http://example.com/test?signed=%2Ftest", withoutParameters.toString());
+    }
+
+    @Test
+    void testSignerValuesAreWrittenWithToString() {
+        UrlBuilder builder = new UrlBuilder("example.com", null)
+            .usingUrlSigner(context -> {
+                Map<String, Object> params = new LinkedHashMap<>();
+                params.put("expires", 1795127806L);
+                params.put("version", 2);
+                return params;
+            });
+
+        assertEquals("http://example.com/?expires=1795127806&version=2", builder.toString());
+    }
+
+    @Test
     void testSignerOutputWithBlankKeyIsIgnored() {
         UrlBuilder builder = new UrlBuilder("example.com", "/test")
             .usingUrlSigner(context -> {
