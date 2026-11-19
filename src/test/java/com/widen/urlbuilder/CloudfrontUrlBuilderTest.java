@@ -153,7 +153,7 @@ class CloudfrontUrlBuilderTest
     }
 
     @Test
-    void testExpireInCalculatesNewExpirationOnEachToString()
+    void testExpireInCalculatesNewExpirationOnEachToString() throws InterruptedException
     {
         CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
             .expireIn(1, TimeUnit.HOURS);
@@ -161,17 +161,13 @@ class CloudfrontUrlBuilderTest
         String url1 = builder.toString();
         String expires1 = extractParameter(url1, "Expires");
         
-        // Small delay to ensure time difference
-        try { Thread.sleep(50); } catch (InterruptedException e) { /* ignore */ }
+        // Expires has one-second resolution
+        Thread.sleep(1100);
         
         String url2 = builder.toString();
         String expires2 = extractParameter(url2, "Expires");
         
-        // The expires values should be slightly different (or at least recalculated)
-        // Since we're using 1 hour duration, the difference should be minimal but
-        // the signatures should be different due to different expire times
-        long diff = Math.abs(Long.parseLong(expires2) - Long.parseLong(expires1));
-        assertTrue(diff <= 1, "Expires difference should be 0 or 1 second, was " + diff);
+        assertTrue(Long.parseLong(expires2) > Long.parseLong(expires1), "the second URL should expire later than the first");
     }
 
     @Test
