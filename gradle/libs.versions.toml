@@ -1,13 +1,13 @@
 [versions]
-bouncycastle = "1.83"
+bouncycastle = "1.87"
 commons-io = "2.21.0"
 junit = "5.13.4"
 nexus-publish = "2.0.0"
 slf4j = "2.0.17"
 
 [libraries]
-bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk15to18", version.ref = "bouncycastle" }
-bouncycastle-bcpkix = { module = "org.bouncycastle:bcpkix-jdk15to18", version.ref = "bouncycastle" }
+bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
+bouncycastle-bcpkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
 commons-io = { module = "commons-io:commons-io", version.ref = "commons-io" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
