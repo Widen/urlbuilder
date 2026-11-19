@@ -7,6 +7,7 @@ import java.security.PrivateKey;
 import java.security.Security;
 import java.security.spec.PKCS8EncodedKeySpec;
 
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openssl.PEMKeyPair;
 import org.bouncycastle.openssl.PEMParser;
@@ -35,8 +36,13 @@ public class CloudfrontPrivateKeyUtils
         try
         {
             PEMParser reader = new PEMParser(new StringReader(pem));
-            PEMKeyPair pair = (PEMKeyPair) reader.readObject();
-            PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(pair.getPrivateKeyInfo().getEncoded());
+            // A PKCS#1 key ("BEGIN RSA PRIVATE KEY") parses to a PEMKeyPair and a PKCS#8 key ("BEGIN PRIVATE KEY")
+            // to a PrivateKeyInfo.
+            Object pemObject = reader.readObject();
+            PrivateKeyInfo keyInfo = pemObject instanceof PEMKeyPair
+                ? ((PEMKeyPair) pemObject).getPrivateKeyInfo()
+                : (PrivateKeyInfo) pemObject;
+            PKCS8EncodedKeySpec privateKeySpec = new PKCS8EncodedKeySpec(keyInfo.getEncoded());
 
             KeyFactory factory = KeyFactory.getInstance("RSA");
             return factory.generatePrivate(privateKeySpec);
