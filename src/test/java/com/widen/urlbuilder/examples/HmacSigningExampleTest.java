@@ -9,7 +9,10 @@ import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -30,7 +33,7 @@ class HmacSigningExampleTest {
         UrlBuilder builder = new UrlBuilder("cdn.example.com", "/videos/movie.mp4");
         builder.addParameter("user", "john");
         builder.usingUrlSigner(context -> {
-            String signature = hmacSha256(context.getUrl(), SECRET_KEY);
+            String signature = hmacSha256(context.getStringToSign(), SECRET_KEY);
             return Collections.singletonMap("signature", signature);
         });
         
@@ -61,7 +64,7 @@ class HmacSigningExampleTest {
     @Test
     void exampleExpiringUrlSigner() {
         // Signer that adds expiration timestamp
-        ExpiringHmacSigner signer = new ExpiringHmacSigner(SECRET_KEY, 3600);
+        ExpiringHmacSigner signer = new ExpiringHmacSigner(SECRET_KEY, Duration.ofHours(1));
         
         UrlBuilder builder = new UrlBuilder("api.example.com", "/v1/data");
         builder.usingUrlSigner(signer);
@@ -69,6 +72,26 @@ class HmacSigningExampleTest {
         
         assertTrue(signedUrl.contains("signature="));
         assertTrue(signedUrl.contains("expires="));
+    }
+
+    @Test
+    void exampleVerifyingExpiringUrl() {
+        ExpiringHmacVerifier verifier = new ExpiringHmacVerifier(SECRET_KEY);
+
+        String signedUrl = new UrlBuilder("api.example.com", "/v1/data")
+            .addParameter("user", "john")
+            .usingUrlSigner(new ExpiringHmacSigner(SECRET_KEY, Duration.ofHours(1)))
+            .toString();
+        String expiredUrl = new UrlBuilder("api.example.com", "/v1/data")
+            .addParameter("user", "john")
+            .usingUrlSigner(new ExpiringHmacSigner(SECRET_KEY, Duration.ofHours(-1)))
+            .toString();
+
+        assertTrue(verifier.isValid(signedUrl));
+        assertFalse(verifier.isValid(expiredUrl), "an expired URL is rejected");
+        assertFalse(verifier.isValid(signedUrl.replace("user=john", "user=jane")), "a changed URL is rejected");
+        assertFalse(verifier.isValid(signedUrl.replaceFirst("expires=\\d+", "expires=9999999999")), "a changed expiration is rejected");
+        assertFalse(verifier.isValid("http://api.example.com/v1/data?user=john"), "an unsigned URL is rejected");
     }
     
     @Test
@@ -80,7 +103,7 @@ class HmacSigningExampleTest {
             assertTrue(context.isSsl());
             assertTrue(context.getUrl().startsWith("https://"));
             
-            String signature = hmacSha256(context.getUrl(), SECRET_KEY);
+            String signature = hmacSha256(context.getStringToSign(), SECRET_KEY);
             return Collections.singletonMap("sig", signature);
         });
         
@@ -115,7 +138,7 @@ class HmacSigningExampleTest {
         
         @Override
         public Map<String, String> sign(SigningContext context) {
-            String signature = hmacSha256(context.getUrl(), secretKey);
+            String signature = hmacSha256(context.getStringToSign(), secretKey);
             
             return Collections.singletonMap("signature", signature);
         }
@@ -126,25 +149,58 @@ class HmacSigningExampleTest {
      */
     private static class ExpiringHmacSigner implements UrlSigner {
         private final String secretKey;
-        private final long expirationSeconds;
+        private final Duration validFor;
         
-        public ExpiringHmacSigner(String secretKey, long expirationSeconds) {
+        public ExpiringHmacSigner(String secretKey, Duration validFor) {
             this.secretKey = secretKey;
-            this.expirationSeconds = expirationSeconds;
+            this.validFor = validFor;
         }
         
         @Override
-        public Map<String, String> sign(SigningContext context) {
-            long expiresAt = System.currentTimeMillis() / 1000 + expirationSeconds;
-            
-            // The separator keeps two different URL and expiration pairs from producing the same signed text
-            String toSign = context.getUrl() + "\n" + expiresAt;
-            String signature = hmacSha256(toSign, secretKey);
-            
-            Map<String, String> params = new LinkedHashMap<>();
-            params.put("expires", String.valueOf(expiresAt));
-            params.put("signature", signature);
-            return params;
+        public Map<String, ?> sign(SigningContext context) {
+            // Added before signing, so the signature covers the expiration
+            context.addParameter("expires", Instant.now().plus(validFor).getEpochSecond());
+
+            String signature = hmacSha256(context.getStringToSign(), secretKey);
+            return Collections.singletonMap("signature", signature);
+        }
+    }
+
+    /**
+     * Verifies URLs signed by {@link ExpiringHmacSigner}.
+     */
+    private static class ExpiringHmacVerifier {
+        private final String secretKey;
+
+        public ExpiringHmacVerifier(String secretKey) {
+            this.secretKey = secretKey;
+        }
+
+        public boolean isValid(String signedUrl) {
+            UrlBuilder builder = new UrlBuilder(signedUrl);
+            String expires = firstValue(builder, "expires");
+            String signature = firstValue(builder, "signature");
+            if (expires == null || signature == null) {
+                return false;
+            }
+
+            // The signer signed the whole URL except the signature parameter, so rebuild exactly that.
+            // Check the signature first: until it matches, the expiration is untrusted input.
+            String signedText = builder.clearParameter("signature").toString();
+            String expected = hmacSha256(signedText, secretKey);
+            // MessageDigest.isEqual compares in constant time, so the comparison leaks nothing about the signature
+            if (!MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8),
+                    signature.getBytes(StandardCharsets.UTF_8))) {
+                return false;
+            }
+
+            Instant expiresAt = Instant.ofEpochSecond(Long.parseLong(expires));
+            return Instant.now().isBefore(expiresAt);
+        }
+
+        private static String firstValue(UrlBuilder builder, String name) {
+            List<String> values = builder.getQueryParameters().get(name);
+            return values == null ? null : values.get(0);
         }
     }
 }
