@@ -79,7 +79,8 @@ class UrlBuilderParsingTest
         "http://my.host.com:8080/bar?a=b#foo",
         "http://my.host.com/bar?a=b#foo",
         "https://my.host.com/bar?a=b#foo",
-        "https://my.host.com:8080/bar?a=b&c=d"
+        "https://my.host.com:8080/bar?a=b&c=d",
+        "https://my.host.com/a%20b/c%2Fd?x=y%20z"
     })
     void roundTripParseAndToString(String url)
     {
@@ -115,5 +116,14 @@ class UrlBuilderParsingTest
         assertEquals(Arrays.asList("2"), builder.getQueryParameters().get("b"));
         assertEquals(Arrays.asList("3", "4"), builder.getQueryParameters().get("c"));
         assertEquals(Arrays.asList(""), builder.getQueryParameters().get("d"));
+    }
+
+    @Test
+    void keepsEqualsSignsInQueryParameterValues()
+    {
+        UrlBuilder builder = new UrlBuilder("https://my.host.com/bar?sig=abc==&a=b=c");
+
+        assertEquals(Arrays.asList("abc=="), builder.getQueryParameters().get("sig"));
+        assertEquals(Arrays.asList("b=c"), builder.getQueryParameters().get("a"));
     }
 }
