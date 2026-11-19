@@ -3,7 +3,7 @@ bouncycastle = "1.83"
 commons-io = "2.21.0"
 junit = "5.13.4"
 nexus-publish = "2.0.0"
-slf4j = "2.0.17"
+slf4j = "2.0.18"
 
 [libraries]
 bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk15to18", version.ref = "bouncycastle" }
