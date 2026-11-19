@@ -146,6 +146,11 @@ class PathSegmentEncoderTest {
     }
 
     @Test
+    void decodeKeepsUnencodedSupplementaryCharacters() {
+        assertEquals("a \ud83d\ude00\u00e9", encoder.decode("a%20\ud83d\ude00\u00e9"));
+    }
+
+    @Test
     void roundTripEncodeDecode() {
         String[] testStrings = {
             "simple",
