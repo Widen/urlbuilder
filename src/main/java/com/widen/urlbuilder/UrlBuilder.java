@@ -675,43 +675,24 @@ public class UrlBuilder {
         }
 
         if (!GenerationMode.HOSTNAME_RELATIVE.equals(mode)) {
-            if (port != 80 && port != 443 && port > 0) {
+            if (hasNonDefaultPort()) {
                 url.append(":").append(port);
             }
         }
 
-        url.append("/");
+        String encodedPath = buildPath();
+        url.append(encodedPath);
 
-        if (!path.isEmpty()) {
-            url.append(StringUtilsInternal.join(encodePathSegments(), "/"));
+        String query = buildParams(queryParams);
 
-            if (trailingPathSlash) {
-                url.append("/");
-            }
-        }
-
-        // Build query string - with signing if present
-        String queryString;
         if (urlSigner != null) {
-            // Build unsigned URL for signing context
-            String unsignedQueryString = buildParams(queryParams);
-            StringBuilder unsignedUrl = new StringBuilder(url);
-            if (!unsignedQueryString.isEmpty()) {
-                unsignedUrl.append("?").append(unsignedQueryString);
-            }
-            
-            // Invoke signer
-            UrlSigner.SigningContext context = buildSigningContext(unsignedUrl.toString());
-            Map<String, String> signatureParams = urlSigner.sign(context);
-
-            queryString = buildParams(withSignatureParams(signatureParams));
-        } else {
-            queryString = buildParams(queryParams);
+            String unsignedUrl = query.isEmpty() ? url.toString() : url + "?" + query;
+            Map<String, String> signatureParams = urlSigner.sign(buildSigningContext(unsignedUrl, encodedPath, query));
+            query = buildParams(withSignatureParams(signatureParams));
         }
 
-        if (!queryString.isEmpty()) {
-            url.append("?");
-            url.append(queryString);
+        if (!query.isEmpty()) {
+            url.append("?").append(query);
         }
 
         if (StringUtilsInternal.isNotBlank(fragment)) {
@@ -719,6 +700,19 @@ public class UrlBuilder {
         }
 
         return url.toString();
+    }
+
+    private boolean hasNonDefaultPort() {
+        return port > 0 && port != 80 && port != 443;
+    }
+
+    private String buildPath() {
+        if (path.isEmpty()) {
+            return "/";
+        }
+
+        String encodedPath = "/" + StringUtilsInternal.join(encodePathSegments(), "/");
+        return trailingPathSlash ? encodedPath + "/" : encodedPath;
     }
 
     private String buildParams(List<QueryParam> params) {
@@ -757,40 +751,21 @@ public class UrlBuilder {
         return params;
     }
 
-    /**
-     * Build a SigningContext with current URL state.
-     */
-    private UrlSigner.SigningContext buildSigningContext(String unsignedUrl) {
+    private UrlSigner.SigningContext buildSigningContext(String unsignedUrl, String encodedPath, String encodedQuery) {
         String protocol = "";
         if (GenerationMode.FULLY_QUALIFIED.equals(mode)) {
             protocol = ssl ? "https" : "http";
         }
-        
-        String encodedPath;
-        if (!path.isEmpty()) {
-            encodedPath = "/" + StringUtilsInternal.join(encodePathSegments(), "/");
-            if (trailingPathSlash) {
-                encodedPath += "/";
-            }
-        } else {
-            encodedPath = "/";
-        }
-        
-        String encodedQuery = buildParams(queryParams);
-        
-        // Build raw (unencoded) parameters map
+
         Map<String, String> parameters = new LinkedHashMap<>();
         for (QueryParam qp : queryParams) {
             parameters.put(qp.key, qp.value);
         }
 
-        // Use null for default ports (80/443) or if port is not set
-        Integer effectivePort = (port > 0 && port != 80 && port != 443) ? port : null;
-        
         return new SigningContextImpl(
             protocol,
             hostname != null ? hostname : "",
-            effectivePort,
+            hasNonDefaultPort() ? port : null,
             encodedPath,
             encodedQuery,
             parameters,
