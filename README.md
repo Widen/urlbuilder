@@ -3,21 +3,24 @@
 [![Build Status](https://github.com/Widen/urlbuilder/actions/workflows/ci.yml/badge.svg)](https://github.com/Widen/urlbuilder/actions/workflows/ci.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/com.widen/urlbuilder)](https://search.maven.org/artifact/com.widen/urlbuilder)
 
-Utility class for constructing syntactically correct HTTP URLs using a fluent method-chaining API. It strives simply to be more robust than manually constructing URLs by string concatenation.
+Utility class for constructing syntactically correct HTTP URLs using a fluent method-chaining API. It strives simply to
+be more robust than manually constructing URLs by string concatenation.
 
 Made with :heart: by Widen.
 
 ## Requirements
 
-- Java 8 or higher
+* Java 8 or higher
 
 ## Features
 
 * Automatic slash management in paths. Slashes will be de-duped or added as necessary when using addPathSegment
 * Automatic URL encoding for both path segments (preserving slashes) and query parameters
   * RFC 3986 compliant encoders:
-    * [PathSegmentEncoder](/src/main/java/com/widen/urlbuilder/PathSegmentEncoder.java) for path segments (allows `@`, `:`, sub-delimiters unencoded)
-    * [QueryParameterEncoder](/src/main/java/com/widen/urlbuilder/QueryParameterEncoder.java) for query parameters (stricter encoding)
+    * [PathSegmentEncoder](/src/main/java/com/widen/urlbuilder/PathSegmentEncoder.java) for path segments (allows `@`,
+      `:`, sub-delimiters unencoded)
+    * [QueryParameterEncoder](/src/main/java/com/widen/urlbuilder/QueryParameterEncoder.java) for query parameters
+      (stricter encoding)
   * Backward compatibility:
     * [LegacyEncoder](/src/main/java/com/widen/urlbuilder/LegacyEncoder.java) for v2.x-compatible encoding
     * Use `usingLegacyEncoding()` to enable v2.x behavior for both path and query encoding
@@ -113,16 +116,20 @@ URL url = builder.toURL();
 
 ## [S3](https://aws.amazon.com/s3/) Flavored UrlBuilder
 
-[`S3UrlBuilder`](/src/main/java/com/widen/urlbuilder/S3UrlBuilder.java) provides specialized functionality for building S3 URLs.
+[`S3UrlBuilder`](/src/main/java/com/widen/urlbuilder/S3UrlBuilder.java) provides specialized functionality for building
+S3 URLs.
 
 ### Features
 
 * `expireIn` and `expireAt` for time-bombing S3 links
 * All bucket reference methods supported:
-  * [virtual bucket](http://docs.aws.amazon.com/AmazonS3/latest/dev/VirtualHosting.html) (`http://bucket.example.com/key.txt`)
-  * [bucket in path](http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingBucket.html#access-bucket-intro) (`https://s3.amazonaws.com/bucket.example.com/key.txt`)
+  * [virtual bucket](http://docs.aws.amazon.com/AmazonS3/latest/dev/VirtualHosting.html)
+    (`http://bucket.example.com/key.txt`)
+  * [bucket in path](http://docs.aws.amazon.com/AmazonS3/latest/dev/UsingBucket.html#access-bucket-intro)
+    (`https://s3.amazonaws.com/bucket.example.com/key.txt`)
   * hostname (`http://bucket.example.com.s3.amazonaws.com/key.txt`)
-* `withAttachmentFilename(String filename)` generates required `Content-Disposition` header for browser file download prompt
+* `withAttachmentFilename(String filename)` generates required `Content-Disposition` header for browser file download
+  prompt
 
 ### Examples
 
@@ -157,7 +164,8 @@ S3UrlBuilder.create("my-bucket", "documents/report-2024-q1.pdf")
 
 ## [CloudFront](https://aws.amazon.com/cloudfront/) Flavored UrlBuilder
 
-[`CloudfrontUrlBuilder`](/src/main/java/com/widen/urlbuilder/CloudfrontUrlBuilder.java) provides specialized functionality for building CloudFront URLs.
+[`CloudfrontUrlBuilder`](/src/main/java/com/widen/urlbuilder/CloudfrontUrlBuilder.java) provides specialized
+functionality for building CloudFront URLs.
 
 ### Features
 
@@ -183,9 +191,11 @@ new CloudfrontUrlBuilder("d1234.cloudfront.net", "files/document.pdf", "APKAEIBA
 
 ## URL Signing
 
-UrlBuilder supports signing URLs during generation using the `UrlSigner` interface. This is useful for implementing HMAC signatures, RSA signing (like CloudFront), or other URL signing schemes.
+UrlBuilder supports signing URLs during generation using the `UrlSigner` interface. This is useful for implementing HMAC
+signatures, RSA signing (like CloudFront), or other URL signing schemes.
 
-The `sign` method receives a `SigningContext` and returns a `Map<String, String>`. Each key/value pair in that map is appended as a query parameter to the final generated URL and URL encoded like any other parameter.
+The `sign` method receives a `SigningContext` and returns a `Map<String, String>`. Each key/value pair in that map is
+appended as a query parameter to the final generated URL and URL encoded like any other parameter.
 
 ### Basic Usage
 
@@ -224,10 +234,7 @@ public class HmacUrlSigner implements UrlSigner {
     public Map<String, String> sign(SigningContext context) {
         String signature = hmacSha256(context.getUrl(), secretKey);
         
-        Map<String, String> params = new HashMap<>();
-        params.put("signature", signature);
-        params.put("timestamp", String.valueOf(System.currentTimeMillis() / 1000));
-        return params;
+        return Collections.singletonMap("signature", signature);
     }
 }
 
@@ -256,8 +263,8 @@ public class ExpiringHmacSigner implements UrlSigner {
     public Map<String, String> sign(SigningContext context) {
         long expiresAt = System.currentTimeMillis() / 1000 + expirationSeconds;
         
-        // Sign URL + expiration
-        String toSign = context.getUrl() + expiresAt;
+        // The separator keeps two different URL and expiration pairs from producing the same signed text
+        String toSign = context.getUrl() + "\n" + expiresAt;
         String signature = hmacSha256(toSign, secretKey);
         
         Map<String, String> params = new LinkedHashMap<>();
@@ -278,25 +285,28 @@ String signedUrl = builder.toString();
 
 The `SigningContext` provides access to URL components:
 
-- `getUrl()` - Complete unsigned URL (what you typically sign)
-- `getProtocol()` - Protocol (http/https)
-- `getHostname()` - Hostname
-- `getPort()` - Port number or -1
-- `getEncodedPath()` - URL-encoded path
-- `getEncodedQuery()` - URL-encoded query string
-- `getFragment()` - Fragment (not typically signed)
-- `isSsl()` - Whether using HTTPS
-- `getGenerationMode()` - URL generation mode
+* `getUrl()` - Complete unsigned URL (what you typically sign)
+* `getProtocol()` - Protocol (http/https)
+* `getHostname()` - Hostname
+* `getPort()` - Port number, or `null` when the port is unset, 80, or 443
+* `getEncodedPath()` - URL-encoded path
+* `getEncodedQuery()` - URL-encoded query string
+* `getParameters()` - Unencoded query parameters
+* `getFragment()` - Fragment (not typically signed)
+* `isSsl()` - Whether using HTTPS
+* `getGenerationMode()` - URL generation mode
 
 ### Best Practices
 
 1. **Keep signers stateless** - Signers should be thread-safe
 2. **Sign the complete URL** - Use `context.getUrl()` in most cases
 3. **Don't include fragments** - Fragments are client-side only
-4. **Return unencoded values** - The builder URL-encodes the parameters a signer returns, so a value that is already percent-encoded is encoded twice
-5. **Add expiration** - Prevent signature reuse with expiration timestamps
+4. **Return unencoded values** - The builder URL-encodes the parameters a signer returns, so a value that is already
+   percent-encoded is encoded twice
+5. **Add expiration** - Limit signature reuse with an expiration timestamp, and include it in the signed text
 
-See [`HmacSigningExampleTest`](/src/test/java/com/widen/urlbuilder/examples/HmacSigningExampleTest.java) for more examples.
+See [`HmacSigningExampleTest`](/src/test/java/com/widen/urlbuilder/examples/HmacSigningExampleTest.java) for more
+examples.
 
 ## License
 

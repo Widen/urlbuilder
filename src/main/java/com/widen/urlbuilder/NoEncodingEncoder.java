@@ -6,7 +6,7 @@ package com.widen.urlbuilder;
  * This encoder is useful when:
  * <ul>
  *   <li>Input is already percent-encoded and should not be double-encoded</li>
- *   <li>Cryptographic signatures that should be preserved exactly as-is</li>
+ *   <li>Signatures in a URL-safe alphabet that should be preserved exactly as-is</li>
  *   <li>Testing or debugging URL construction</li>
  *   <li>Special cases where encoding must be handled externally</li>
  * </ul>
@@ -16,17 +16,19 @@ package com.widen.urlbuilder;
  * <p>
  * Example usage:
  * <pre>{@code
- * builder.addParameter("signature", base64Signature, NoEncodingEncoder.INSTANCE);
+ * builder.addParameter("signature", urlSafeBase64Signature, NoEncodingEncoder.INSTANCE);
  * }</pre>
  *
  * @see PathSegmentEncoder
  * @see QueryParameterEncoder
- * @since 3.0.0
+ * @since 1.0.0
  */
 public final class NoEncodingEncoder implements Encoder
 {
     /**
      * Singleton instance for reuse.
+     *
+     * @since 3.0.0
      */
     public static final NoEncodingEncoder INSTANCE = new NoEncodingEncoder();
 
