@@ -15,6 +15,7 @@ package com.widen.urlbuilder;
 
 import java.nio.charset.StandardCharsets;
 import java.security.SignatureException;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
@@ -35,7 +36,7 @@ import javax.crypto.spec.SecretKeySpec;
  * <p><b>Typical usage (signed URL):</b>
  * <pre>{@code
  * String signedUrl = new S3UrlBuilder("my-bucket", "path/to/file.pdf")
- *     .expireIn(1, TimeUnit.HOURS)
+ *     .expireIn(Duration.ofHours(1))
  *     .usingCredentials(awsAccessKey, awsSecretKey)
  *     .toString();
  * // Result: http://my-bucket.s3.amazonaws.com/path/to/file.pdf?Expires=...&AWSAccessKeyId=...&Signature=...
@@ -46,7 +47,7 @@ import javax.crypto.spec.SecretKeySpec;
  * String downloadUrl = new S3UrlBuilder("my-bucket", "documents/report.pdf")
  *     .usingSsl()
  *     .withAttachmentFilename("quarterly-report.pdf")
- *     .expireIn(30, TimeUnit.MINUTES)
+ *     .expireIn(Duration.ofMinutes(30))
  *     .usingCredentials(awsAccessKey, awsSecretKey)
  *     .toString();
  * }</pre>
@@ -56,7 +57,7 @@ import javax.crypto.spec.SecretKeySpec;
  * String url = new S3UrlBuilder("my-eu-bucket", "data/file.json")
  *     .inRegion("eu-west-1")
  *     .usingSsl()
- *     .expireIn(1, TimeUnit.HOURS)
+ *     .expireIn(Duration.ofHours(1))
  *     .usingCredentials(awsAccessKey, awsSecretKey)
  *     .toString();
  * }</pre>
@@ -71,7 +72,7 @@ import javax.crypto.spec.SecretKeySpec;
  * <p><b>AWS STS Token Support:</b>
  * <pre>{@code
  * String url = new S3UrlBuilder("my-bucket", "file.txt")
- *     .expireIn(1, TimeUnit.HOURS)
+ *     .expireIn(Duration.ofHours(1))
  *     .usingCredentials(accessKey, secretKey, sessionToken)
  *     .toString();
  * }</pre>
@@ -143,6 +144,21 @@ public class S3UrlBuilder
      *
      * <p>Replaces an expiration set earlier with {@code expireAt}.
      *
+     * @param duration The time from URL generation until the URL expires (must be positive)
+     * @return This builder for method chaining
+     * @throws IllegalArgumentException if duration is null or not positive
+     * @since 3.0.0
+     */
+    public S3UrlBuilder expireIn(Duration duration)
+    {
+        expireDate.expireIn(duration);
+        return this;
+    }
+
+    /**
+     * Sets the relative duration until the URL expires, as a count of a {@link TimeUnit}.
+     * Behaves as {@link #expireIn(Duration)}.
+     *
      * @param duration The duration value (must be positive)
      * @param unit The time unit for the duration
      * @return This builder for method chaining
@@ -150,8 +166,8 @@ public class S3UrlBuilder
      */
     public S3UrlBuilder expireIn(long duration, TimeUnit unit)
     {
-        expireDate.expireIn(duration, unit);
-        return this;
+        InternalUtils.checkNotNull(unit, "unit");
+        return expireIn(Duration.ofNanos(unit.toNanos(duration)));
     }
 
     /**
