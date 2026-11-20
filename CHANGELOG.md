@@ -63,8 +63,13 @@ CloudFront builders. Some URLs differ from the ones version 2 produced, so read 
    `IllegalArgumentException` for a zero or negative duration, and `expireAt` throws it for null. In 2.x
    `S3UrlBuilder.expireIn(0, unit)` produced an unsigned URL, and `expireAt(null)` cleared the expiration.
 8. **Move from `expireAt(Date)` to `expireAt(Instant)`.** The `Date` overload still works and is deprecated.
-9. **Update any rule that names the BouncyCastle artifacts.** The library now depends on `bcprov-jdk18on` and
-   `bcpkix-jdk18on` 1.87, where 2.x depended on `bcprov-jdk15to18` and `bcpkix-jdk15to18` 1.80.
+9. **Check code that pairs a scheme with port 80 or 443, or reads `getPort()`.** The port now wins over the scheme:
+   `https://host:80/` parses as `http://host/`, and `setPort(80)` turns HTTPS off. A `usingSsl(boolean)` call after
+   the port keeps the port, so `new UrlBuilder("host", 80, "a").usingSsl()` writes `https://host:80/a` where 2.x
+   wrote `https://host/a`. `new UrlBuilder(hostname, path)` sets no port, so its `getPort()` returns 0 where 2.x
+   returned 80.
+10. **Update any rule that names the BouncyCastle artifacts.** The library now depends on `bcprov-jdk18on` and
+    `bcpkix-jdk18on` 1.87, where 2.x depended on `bcprov-jdk15to18` and `bcpkix-jdk15to18` 1.80.
 
 ### Added
 
@@ -85,6 +90,7 @@ CloudFront builders. Some URLs differ from the ones version 2 produced, so read 
 - The builder encodes the path when it writes the URL, so `getPath()` and `getPathSegments()` return unencoded text.
 - `new UrlBuilder(String)` decodes the path of the URL it parses.
 - A parameter value of only whitespace is written, as in `q=%20`. A null or empty value still writes the name alone.
+- Port 80 turns HTTPS off, as port 443 turns it on, and `new UrlBuilder(hostname, path)` sets no port.
 - `expireIn` and `expireAt` replace each other, so the later call sets the expiration.
 - `expireIn` rejects a zero or negative duration, and `expireAt` rejects null.
 - `toURL()` wraps a `MalformedURLException` in a `RuntimeException`.
@@ -113,6 +119,8 @@ CloudFront builders. Some URLs differ from the ones version 2 produced, so read 
 - `new UrlBuilder(String)` mishandled a query value that contains `=`. It removed trailing `=` characters, so
   `?sig=abc==` parsed as `abc`, and it dropped the whole parameter for a value such as `?a=b=c`.
 - `new UrlBuilder(String)` encoded an already encoded path a second time.
+- `UrlBuilder` left port 80 out of an `https` URL and port 443 out of an `http` URL, so the URL named the wrong port.
+  `SigningContext.getPort()` returned null for those ports as well.
 
 ### Security
 

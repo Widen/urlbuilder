@@ -152,20 +152,21 @@ public class UrlBuilder {
     /**
      * Construct a UrlBuilder with a hostname and an initial path.
      * <p>
-     * The builder will be set to {@link GenerationMode#FULLY_QUALIFIED} mode with port 80.
+     * The builder will be set to {@link GenerationMode#FULLY_QUALIFIED} mode with no port, so the URL uses the
+     * default port of its scheme.
      *
      * @param hostname the hostname (e.g., "example.com")
      * @param path the initial path (e.g., "foo/bar"), may be null
      */
     public UrlBuilder(String hostname, String path) {
-        this(hostname, 80, path);
+        this(hostname, 0, path);
     }
 
     /**
      * Construct a UrlBuilder with a hostname, port, and an initial path.
      * <p>
      * The builder will be set to {@link GenerationMode#FULLY_QUALIFIED} mode.
-     * If port is 443, SSL will be enabled automatically.
+     * Port 443 enables SSL and port 80 disables it, as {@link #setPort(int)} describes.
      *
      * @param hostname the hostname (e.g., "example.com")
      * @param port the port number (e.g., 8080)
@@ -370,15 +371,21 @@ public class UrlBuilder {
     /**
      * Set the port number.
      * <p>
-     * If port is 443, SSL will be enabled automatically.
+     * Port 443 enables SSL and port 80 disables it, so the port wins over the scheme of a parsed URL:
+     * {@code https://host:80/} becomes {@code http://host/}. A later call to {@link #usingSsl(boolean)} changes
+     * the scheme but keeps the port, which the URL then names unless it is the default port of the new scheme.
      *
-     * @param port port to be appended after the hostname on fully qualified URLs
+     * @param port port to be appended after the hostname on fully qualified and protocol-relative URLs; zero or a
+     *             negative number means the default port of the scheme
      */
     public void setPort(int port) {
         this.port = port;
 
         if (port == 443) {
-            usingSsl();
+            usingSsl(true);
+        }
+        else if (port == 80) {
+            usingSsl(false);
         }
     }
 
@@ -718,7 +725,7 @@ public class UrlBuilder {
     }
 
     private boolean hasNonDefaultPort() {
-        return port > 0 && port != 80 && port != 443;
+        return port > 0 && port != (ssl ? 443 : 80);
     }
 
     private String buildPath() {

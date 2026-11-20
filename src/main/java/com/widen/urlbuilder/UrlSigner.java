@@ -126,8 +126,9 @@ public interface UrlSigner {
         /**
          * Returns the port number of the URL.
          * 
-         * @return The port set on the builder, or {@code null} when it is unset,
-         *         80, or 443, whichever scheme the URL uses. A hostname-relative
+         * @return The port set on the builder, or {@code null} when it is unset
+         *         or is the default port of the scheme: 80 for {@code http}
+         *         and 443 for {@code https}. A hostname-relative
          *         URL omits the port, but the port is still reported here.
          */
         Integer getPort();
