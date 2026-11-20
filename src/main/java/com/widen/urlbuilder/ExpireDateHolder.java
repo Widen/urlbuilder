@@ -54,6 +54,15 @@ class ExpireDateHolder
      */
     Instant getExpireDate()
     {
+        return getExpireDate(Instant.now());
+    }
+
+    /**
+     * @param now the moment a duration counts from
+     * @return the expiry, computed from {@code now} when it is a duration, or null when no expiry is set
+     */
+    Instant getExpireDate(Instant now)
+    {
         if (instant != null)
         {
             return instant;
@@ -64,6 +73,6 @@ class ExpireDateHolder
             return null;
         }
 
-        return Instant.now().plus(duration);
+        return now.plus(duration);
     }
 }

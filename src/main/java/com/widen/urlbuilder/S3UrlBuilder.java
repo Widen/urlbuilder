@@ -15,6 +15,7 @@ package com.widen.urlbuilder;
 
 import java.nio.charset.StandardCharsets;
 import java.security.SignatureException;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -105,6 +106,10 @@ public class S3UrlBuilder
     private String awsSessionToken;
 
     private String contentType;
+
+    private boolean signatureVersion2;
+
+    private Clock clock = Clock.systemUTC();
 
     // S3 reads "+" in a path as a space, so encode keys as the AWS SDKs do: everything but A-Z a-z 0-9 - . _ ~
     private final UrlBuilder builder = new UrlBuilder().usingPathEncoder(new QueryParameterEncoder());
@@ -246,6 +251,33 @@ public class S3UrlBuilder
         InternalUtils.checkNotNull(awsSessionToken, "awsSessionToken");
 
         this.awsSessionToken = awsSessionToken;
+        return this;
+    }
+
+    /**
+     * Signs the URL with AWS Signature Version 2 (SigV2) instead of Signature Version 4.
+     *
+     * <p>S3 accepts SigV2 only in the eight regions launched before 2014, and only where no IAM policy denies it
+     * with the {@code s3:signatureversion} condition key.
+     *
+     * @return This builder for method chaining
+     * @deprecated AWS is retiring SigV2 for S3; sign with Signature Version 4 instead.
+     * @since 3.0.0
+     */
+    @Deprecated
+    public S3UrlBuilder usingSignatureVersion2()
+    {
+        signatureVersion2 = true;
+        return this;
+    }
+
+    /**
+     * Sets the clock that gives the signing time, from which {@code expireIn} counts.
+     */
+    S3UrlBuilder usingClock(Clock clock)
+    {
+        InternalUtils.checkNotNull(clock, "clock");
+        this.clock = clock;
         return this;
     }
 
@@ -409,7 +441,7 @@ public class S3UrlBuilder
             if (expireDate.isSet())
             {
                 canSign();
-                Instant expireInstant = expireDate.getExpireDate();
+                Instant expireInstant = expireDate.getExpireDate(clock.instant());
                 InternalUtils.checkNotNull(expireInstant, "expire instant");
                 Map<String, String> params = signParams(expireInstant, canonicalResource, builder);
                 builder.addParameters(params);
