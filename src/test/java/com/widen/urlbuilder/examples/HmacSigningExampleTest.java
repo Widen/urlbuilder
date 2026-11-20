@@ -14,6 +14,8 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -92,6 +94,19 @@ class HmacSigningExampleTest {
         assertFalse(verifier.isValid(signedUrl.replace("user=john", "user=jane")), "a changed URL is rejected");
         assertFalse(verifier.isValid(signedUrl.replaceFirst("expires=\\d+", "expires=9999999999")), "a changed expiration is rejected");
         assertFalse(verifier.isValid("http://api.example.com/v1/data?user=john"), "an unsigned URL is rejected");
+        assertFalse(verifier.isValid(signedUrl.replace("/v1/data", "/v1//data/")), "a changed path is rejected");
+        assertFalse(verifier.isValid(signedUrl + "&=admin"), "a parameter added after the signature is rejected");
+
+        String expiredUrlWithCallerExpiration = new UrlBuilder("http://api.example.com/v1/data?expires=9999999999")
+            .usingUrlSigner(new ExpiringHmacSigner(SECRET_KEY, Duration.ofHours(-1)))
+            .toString();
+        assertFalse(verifier.isValid(expiredUrlWithCallerExpiration), "the signer's expiration is the one that counts");
+
+        String trailingSlashUrl = new UrlBuilder("api.example.com", "/v1/data")
+            .includeTrailingSlash()
+            .usingUrlSigner(new ExpiringHmacSigner(SECRET_KEY, Duration.ofHours(1)))
+            .toString();
+        assertTrue(verifier.isValid(trailingSlashUrl), "a URL is verified as the signer wrote it");
     }
     
     @Test
@@ -170,6 +185,10 @@ class HmacSigningExampleTest {
      * Verifies URLs signed by {@link ExpiringHmacSigner}.
      */
     private static class ExpiringHmacVerifier {
+        // The signer writes its expiration and then its signature last, so a URL it signed ends with both
+        private static final Pattern SIGNED_URL =
+            Pattern.compile("(?<signedText>.*[?&]expires=(?<expires>\\d+))&signature=(?<signature>[^&#]*)");
+
         private final String secretKey;
 
         public ExpiringHmacVerifier(String secretKey) {
@@ -177,30 +196,23 @@ class HmacSigningExampleTest {
         }
 
         public boolean isValid(String signedUrl) {
-            UrlBuilder builder = new UrlBuilder(signedUrl);
-            String expires = firstValue(builder, "expires");
-            String signature = firstValue(builder, "signature");
-            if (expires == null || signature == null) {
+            Matcher url = SIGNED_URL.matcher(signedUrl);
+            if (!url.matches()) {
                 return false;
             }
 
-            // The signer signed the whole URL except the signature parameter, so rebuild exactly that.
+            // The signer signed everything before the signature parameter. Take that text from the URL as it
+            // arrived: parsing the URL and writing it again can change it.
             // Check the signature first: until it matches, the expiration is untrusted input.
-            String signedText = builder.clearParameter("signature").toString();
-            String expected = hmacSha256(signedText, secretKey);
+            String expected = hmacSha256(url.group("signedText"), secretKey);
             // MessageDigest.isEqual compares in constant time, so the comparison leaks nothing about the signature
             if (!MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8),
-                    signature.getBytes(StandardCharsets.UTF_8))) {
+                    url.group("signature").getBytes(StandardCharsets.UTF_8))) {
                 return false;
             }
 
-            Instant expiresAt = Instant.ofEpochSecond(Long.parseLong(expires));
+            Instant expiresAt = Instant.ofEpochSecond(Long.parseLong(url.group("expires")));
             return Instant.now().isBefore(expiresAt);
-        }
-
-        private static String firstValue(UrlBuilder builder, String name) {
-            List<String> values = builder.getQueryParameters().get(name);
-            return values == null ? null : values.get(0);
         }
     }
 }

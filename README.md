@@ -455,10 +455,13 @@ A signing scheme is yours to design. These choices matter most.
   | Path and parameters | `context.getEncodedPathAndQuery()` | `/a/b.mp4?user=john&expires=1795127806` |
   | Path only | `context.getEncodedPath()` | `/a/b.mp4` |
 
+  The whole URL is the URL as the builder writes it. A protocol-relative URL has no scheme to sign, and a
+  hostname-relative URL has no scheme, host, or port, so its signature stays valid on any host. Use a fully qualified
+  URL when the signature must cover the host.
 * **Where extra values go.** An expiration, a key ID, or a user ID must be in the URL, so the verifier can read it, and
   covered by the signature, so nobody can change it. Add each one with `context.addParameter` before you read the text
-  to sign. The signature does not cover a parameter that `sign` returns, because the builder appends it after signing.
-  Return only the signature.
+  to sign; once you have read it, `addParameter` throws `IllegalStateException`. The signature does not cover a
+  parameter that `sign` returns, because the builder appends it after signing. Return only the signature.
 * **Whether the link expires.** A link with no expiration works for as long as the key does, for anyone who obtains it.
   Add an expiration unless the link must be permanent.
 * **A shared secret or a key pair.** An HMAC uses one secret on both sides, so every service that can verify a link can
@@ -505,11 +508,21 @@ String signedUrl = builder.toString();
 
 ### Verifying an expiring URL
 
-The service that receives a signed URL rebuilds the text the signer signed, checks the signature, and then checks the
+The service that receives a signed URL finds the text the signer signed, checks the signature, and then checks the
 expiration. Because the signer signed the whole URL, the signed text is the URL without its `signature` parameter.
+
+The verifier takes that text from the URL as it arrived. Parsing the URL and writing it again can change it, for example
+by dropping an empty path segment, and the verifier would then accept a URL that differs from the signed one. The signer
+writes its `expires` parameter and then its `signature` parameter last, so the verifier accepts only a URL that ends
+with both. It reads the expiration from that place, so an `expires` parameter that the caller put earlier in the URL
+changes nothing.
 
 ```java
 public class ExpiringHmacVerifier {
+    // The signer writes its expiration and then its signature last, so a URL it signed ends with both
+    private static final Pattern SIGNED_URL =
+        Pattern.compile("(?<signedText>.*[?&]expires=(?<expires>\\d+))&signature=(?<signature>[^&#]*)");
+
     private final String secretKey;
 
     public ExpiringHmacVerifier(String secretKey) {
@@ -517,36 +530,32 @@ public class ExpiringHmacVerifier {
     }
 
     public boolean isValid(String signedUrl) {
-        UrlBuilder builder = new UrlBuilder(signedUrl);
-        String expires = firstValue(builder, "expires");
-        String signature = firstValue(builder, "signature");
-        if (expires == null || signature == null) {
+        Matcher url = SIGNED_URL.matcher(signedUrl);
+        if (!url.matches()) {
             return false;
         }
 
-        // The signer signed the whole URL except the signature parameter, so rebuild exactly that.
+        // The signer signed everything before the signature parameter. Take that text from the URL as it
+        // arrived: parsing the URL and writing it again can change it.
         // Check the signature first: until it matches, the expiration is untrusted input.
-        String signedText = builder.clearParameter("signature").toString();
-        String expected = hmacSha256(signedText, secretKey);
+        String expected = hmacSha256(url.group("signedText"), secretKey);
         // MessageDigest.isEqual compares in constant time, so the comparison leaks nothing about the signature
         if (!MessageDigest.isEqual(expected.getBytes(StandardCharsets.UTF_8),
-                signature.getBytes(StandardCharsets.UTF_8))) {
+                url.group("signature").getBytes(StandardCharsets.UTF_8))) {
             return false;
         }
 
-        Instant expiresAt = Instant.ofEpochSecond(Long.parseLong(expires));
+        Instant expiresAt = Instant.ofEpochSecond(Long.parseLong(url.group("expires")));
         return Instant.now().isBefore(expiresAt);
-    }
-
-    private static String firstValue(UrlBuilder builder, String name) {
-        List<String> values = builder.getQueryParameters().get(name);
-        return values == null ? null : values.get(0);
     }
 }
 
 ExpiringHmacVerifier verifier = new ExpiringHmacVerifier("my-secret");
 boolean valid = verifier.isValid(signedUrl);
 ```
+
+The verifier compares the signature as it appears in the URL, so `hmacSha256` must return text that the builder writes
+without encoding, such as hexadecimal or URL-safe Base64.
 
 ### What the signer receives
 

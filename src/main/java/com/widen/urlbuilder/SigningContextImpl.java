@@ -24,7 +24,8 @@ import java.util.Map;
  *
  * <p>The values given to the constructor describe the builder's URL and never change.
  * {@link #addParameter(String, Object)} appends to them, and the query string, the parameter map,
- * and the URL are computed from both.
+ * and the URL are computed from both. Reading the URL or the query string closes the context to
+ * further parameters.
  *
  * <p>Package-private as this is an internal implementation detail.
  * Users interact with the {@link UrlSigner.SigningContext} interface.
@@ -45,6 +46,7 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
     private final UrlBuilder.GenerationMode generationMode;
     private final Encoder queryEncoder;
     private final List<UrlBuilder.QueryParam> addedParameters = new ArrayList<>();
+    private boolean textToSignRead;
 
     /**
      * Creates a new signing context that encodes added parameters with {@link QueryParameterEncoder}.
@@ -92,9 +94,12 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
 
     @Override
     public UrlSigner.SigningContext addParameter(String name, Object value) {
-        if (StringUtilsInternal.isNotBlank(name)) {
-            addedParameters.add(new UrlBuilder.QueryParam(name, value != null ? value.toString() : null, queryEncoder));
+        if (textToSignRead) {
+            throw new IllegalStateException("Cannot add parameter '" + name
+                + "': the signer has already read the text to sign, so the signature would not cover it.");
         }
+
+        UrlBuilder.addQueryParam(addedParameters, name, value, queryEncoder);
         return this;
     }
 
@@ -127,12 +132,22 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
     
     @Override
     public String getEncodedQuery() {
+        textToSignRead = true;
+        return withAddedParameters(encodedQuery, "");
+    }
+
+    /**
+     * @param text the unsigned URL, or a part of it, that ends with the builder's query string
+     * @param queryStart the text that starts the query string when the builder's query string is empty
+     * @return the text followed by the added parameters
+     */
+    private String withAddedParameters(String text, String queryStart) {
         if (addedParameters.isEmpty()) {
-            return encodedQuery;
+            return text;
         }
 
-        String addedQuery = UrlBuilder.buildParams(addedParameters, queryEncoder);
-        return encodedQuery.isEmpty() ? addedQuery : encodedQuery + "&" + addedQuery;
+        String separator = encodedQuery.isEmpty() ? queryStart : "&";
+        return text + separator + UrlBuilder.buildParams(addedParameters, queryEncoder);
     }
     
     @Override
@@ -155,11 +170,8 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
     
     @Override
     public String getUrl() {
-        if (addedParameters.isEmpty()) {
-            return url;
-        }
-
-        return url + (encodedQuery.isEmpty() ? "?" : "&") + UrlBuilder.buildParams(addedParameters, queryEncoder);
+        textToSignRead = true;
+        return withAddedParameters(url, "?");
     }
     
     @Override
