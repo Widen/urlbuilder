@@ -26,6 +26,7 @@ dependencies {
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)
 
+    testImplementation(libs.aws.java.sdk.s3)
     testImplementation(libs.commons.io)
     testImplementation(libs.slf4j.simple)
 }
