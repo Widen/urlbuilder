@@ -1,0 +1,7 @@
+[global]
+flavor = "gfm"
+exclude = ["CLAUDE.md"]
+
+[MD013]
+line-length = 120
+reflow = true

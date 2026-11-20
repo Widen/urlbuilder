@@ -80,7 +80,6 @@ import javax.crypto.spec.SecretKeySpec;
  * 
  * @see <a href="https://docs.aws.amazon.com/AmazonS3/latest/dev/RESTAuthentication.html">S3 REST Authentication</a>
  * @see <a href="https://docs.aws.amazon.com/AmazonS3/latest/dev/VirtualHosting.html">S3 Virtual Hosting</a>
- * @version 0.9.3
  * @since 1.0.0
  */
 public class S3UrlBuilder
@@ -248,13 +247,13 @@ public class S3UrlBuilder
     }
 
     /**
-     * Set endpoint based on AWS Region of bucket: `$REGION.s3.s3.amazonaws.com`
+     * Set endpoint based on AWS Region of bucket: {@code s3.$REGION.amazonaws.com}
      *
      * @param region AWS region identifier (e.g., "us-east-1", "eu-west-1")
+     * @return This builder for method chaining
      * @throws IllegalArgumentException if region is null
      * @see <a href="http://docs.amazonwebservices.com/AmazonS3/latest/dev/LocationSelection.html">S3 Location Selection Docs</a>
      * @see <a href="https://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region">AWS Endpoint Docs</a>
-     * @return This builder for method chaining
      */
     public S3UrlBuilder inRegion(String region)
     {
@@ -267,8 +266,8 @@ public class S3UrlBuilder
      * Reset S3 bucket to new value
      *
      * @param bucket S3 bucket name
-     * @throws IllegalArgumentException if bucket is blank
      * @return This builder for method chaining
+     * @throws IllegalArgumentException if bucket is blank
      */
     public S3UrlBuilder withBucket(String bucket)
     {
@@ -283,8 +282,8 @@ public class S3UrlBuilder
      * Reset S3 key to new value
      *
      * @param key S3 object key
-     * @throws IllegalArgumentException if key is blank
      * @return This builder for method chaining
+     * @throws IllegalArgumentException if key is blank
      */
     public S3UrlBuilder withKey(String key)
     {
@@ -298,8 +297,8 @@ public class S3UrlBuilder
     /**
      * Set URL generation to use bucket name as hostname.
      *
-     * @see <a href="http://docs.amazonwebservices.com/AmazonS3/latest/dev/VirtualHosting.html">S3 Virtual Hosting Docs</a>
      * @return This builder for method chaining
+     * @see <a href="http://docs.amazonwebservices.com/AmazonS3/latest/dev/VirtualHosting.html">S3 Virtual Hosting Docs</a>
      */
     public S3UrlBuilder usingBucketVirtualHost()
     {
