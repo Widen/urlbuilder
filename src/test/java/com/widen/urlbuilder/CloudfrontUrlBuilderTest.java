@@ -18,6 +18,8 @@ import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -47,6 +49,20 @@ class CloudfrontUrlBuilderTest
 
         CloudfrontUrlBuilder builder2 = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/0/b/c/d/test2.jpeg", "APKAIW7O5EPF5UBMJ7KQ", der, "BC").withAttachmentFilename("test.jpg").expireAt(Instant.ofEpochSecond(1381356586L));
         assertEquals(secondUseBuilderValue, builder2.toString());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "/folder/, http://dnnfhn216qiqy.cloudfront.net/folder/?Expires=",
+        "a//b,     http://dnnfhn216qiqy.cloudfront.net/a//b?Expires="
+    })
+    void keepsTrailingSlashAndEmptySegmentsInKey(String key, String expectedPrefix)
+    {
+        String url = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", key, "APKAIW7O5EPF5UBMJ7KQ", pem)
+            .expireAt(Instant.ofEpochSecond(1381356586L))
+            .toString();
+
+        assertTrue(url.startsWith(expectedPrefix), url);
     }
 
     @Test

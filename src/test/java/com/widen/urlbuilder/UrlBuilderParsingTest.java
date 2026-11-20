@@ -140,4 +140,17 @@ class UrlBuilderParsingTest
     {
         assertEquals(expected, new UrlBuilder(spec).toString());
     }
+
+    @ParameterizedTest
+    @CsvSource({
+        "http://my.host.com/foo/,        http://my.host.com/foo/",
+        "http://my.host.com/a/b/?x=1#f,  http://my.host.com/a/b/?x=1#f",
+        "http://my.host.com/,            http://my.host.com/",
+        "http://my.host.com,             http://my.host.com/",
+        "http://my.host.com/a//b,        http://my.host.com/a/b"
+    })
+    void keepsTrailingSlashOfParsedPath(String spec, String expected)
+    {
+        assertEquals(expected, new UrlBuilder(spec).toString());
+    }
 }
