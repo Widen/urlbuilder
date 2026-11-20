@@ -121,42 +121,6 @@ public class S3UrlBuilder
     }
 
     /**
-     * Internal class to hold expiration date configuration.
-     * 
-     * <p>Supports both relative (duration + unit) and absolute (Instant) expiration times.
-     */
-    private static class ExpireDateHolder
-    {
-        long duration;
-
-        TimeUnit unit;
-
-        Instant instant;
-
-        Instant getExpireDate()
-        {
-            if (instant != null)
-            {
-                return instant;
-            }
-
-            if (duration == 0)
-            {
-                return null;
-            }
-
-            long futureMillis = unit.toMillis(duration) + System.currentTimeMillis();
-
-            return Instant.ofEpochMilli(futureMillis);
-        }
-
-        boolean isSet()
-        {
-            return getExpireDate() != null;
-        }
-    }
-
-    /**
      * Easily, and correctly, construct URLs for S3.
      *
      * @param bucket name as String
@@ -178,6 +142,8 @@ public class S3UrlBuilder
      * <p>The actual expiration time is calculated when {@link #toString()} is called,
      * allowing the same builder to generate URLs with fresh expiration times.
      *
+     * <p>Replaces an expiration set earlier with {@code expireAt}.
+     *
      * @param duration The duration value (must be positive)
      * @param unit The time unit for the duration
      * @return This builder for method chaining
@@ -185,13 +151,7 @@ public class S3UrlBuilder
      */
     public S3UrlBuilder expireIn(long duration, TimeUnit unit)
     {
-        if (duration <= 0)
-        {
-            throw new IllegalArgumentException("duration must be positive");
-        }
-        InternalUtils.checkNotNull(unit, "unit");
-        expireDate.duration = duration;
-        expireDate.unit = unit;
+        expireDate.expireIn(duration, unit);
         return this;
     }
 
@@ -202,14 +162,14 @@ public class S3UrlBuilder
      *
      * @param date The absolute date/time when the URL should expire
      * @return This builder for method chaining
+     * @throws IllegalArgumentException if date is null
      * @deprecated Use {@link #expireAt(Instant)} instead for better type safety with Java 8+ time API
      */
     @Deprecated
     public S3UrlBuilder expireAt(Date date)
     {
         InternalUtils.checkNotNull(date, "date");
-        expireDate.instant = date.toInstant();
-        return this;
+        return expireAt(date.toInstant());
     }
 
     /**
@@ -217,6 +177,7 @@ public class S3UrlBuilder
      * 
      * <p>The expiration time is accurate to seconds (milliseconds are truncated).
      * This is the preferred method over {@link #expireAt(Date)}.
+     * It replaces an expiration set earlier with {@code expireIn}.
      *
      * @param instant The absolute instant when the URL should expire
      * @return This builder for method chaining
@@ -225,8 +186,7 @@ public class S3UrlBuilder
      */
     public S3UrlBuilder expireAt(Instant instant)
     {
-        InternalUtils.checkNotNull(instant, "instant");
-        expireDate.instant = instant;
+        expireDate.expireAt(instant);
         return this;
     }
 
@@ -408,30 +368,35 @@ public class S3UrlBuilder
             builder.withPathEncoded(pathSegments);
         }
 
-        if (StringUtilsInternal.isNotBlank(attachmentFilename))
+        try
         {
-            canSign();
+            if (StringUtilsInternal.isNotBlank(attachmentFilename))
+            {
+                canSign();
 
-            builder.addParameter("response-content-disposition", HttpUtils.createContentDispositionHeader("attachment", attachmentFilename));
+                builder.addParameter("response-content-disposition", HttpUtils.createContentDispositionHeader("attachment", attachmentFilename));
+            }
+
+            if(StringUtilsInternal.isNotBlank(contentType))
+            {
+                builder.addParameter("response-content-type", contentType);
+            }
+
+            if (expireDate.isSet())
+            {
+                canSign();
+                Instant expireInstant = expireDate.getExpireDate();
+                InternalUtils.checkNotNull(expireInstant, "expire instant");
+                Map<String, String> params = signParams(expireInstant, canonicalResource, builder);
+                builder.addParameters(params);
+            }
+
+            return builder.toString();
         }
-
-        if(StringUtilsInternal.isNotBlank(contentType))
+        finally
         {
-            builder.addParameter("response-content-type", contentType);
+            builder.clearParameters(); //clean for any subsequent calls to toString()
         }
-
-        if (expireDate.isSet())
-        {
-            canSign();
-            Instant expireInstant = expireDate.getExpireDate();
-            InternalUtils.checkNotNull(expireInstant, "expire instant");
-            Map<String, String> params = signParams(expireInstant, canonicalResource, builder);
-            builder.addParameters(params);
-        }
-
-        String result = builder.toString();
-        builder.clearParameters(); //clean for any subsequent calls to toString()
-        return result;
     }
 
     private void canSign()
@@ -591,14 +556,11 @@ public class S3UrlBuilder
         }
         stringToSign.append(canonicalResource);
 
-        if (!builder.queryParams.isEmpty())
+        String separator = "?";
+        for (UrlBuilder.QueryParam queryParam : builder.queryParams)
         {
-            stringToSign.append("?");
-
-            for (UrlBuilder.QueryParam queryParam : builder.queryParams)
-            {
-                stringToSign.append(String.format("%s=%s", queryParam.key, queryParam.value));
-            }
+            stringToSign.append(separator).append(queryParam.key).append("=").append(queryParam.value);
+            separator = "&";
         }
 
         //System.err.println("sign text for " + canonicalResource + "\n" + stringToSign);

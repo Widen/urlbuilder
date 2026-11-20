@@ -4,7 +4,13 @@ import java.io.IOException;
 import java.security.PrivateKey;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.io.IOUtils;
@@ -179,43 +185,40 @@ class CloudfrontUrlBuilderTest
     }
 
     @Test
-    void testExpireAtTakesPrecedenceOverExpireIn()
+    void testExpireAtReplacesEarlierExpireIn()
     {
-        // When both expireAt and expireIn are set, expireAt takes precedence
-        // This is because ExpireDateHolder checks instant (expireAt) first
         Date fixedDate = new Date(1381356586000L);
-        
+
         CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
-            .expireIn(1, TimeUnit.HOURS)  // Set expireIn first
-            .expireAt(fixedDate);         // Then set expireAt - this takes precedence
-        
-        String url = builder.toString();
-        
-        String expiresParam = extractParameter(url, "Expires");
-        long expiresValue = Long.parseLong(expiresParam);
-        
-        // expireAt should take precedence
-        assertEquals(1381356586L, expiresValue, "expireAt should take precedence over expireIn");
+            .expireIn(1, TimeUnit.HOURS)
+            .expireAt(fixedDate);
+
+        long expiresValue = Long.parseLong(extractParameter(builder.toString(), "Expires"));
+
+        assertEquals(1381356586L, expiresValue, "the later expireAt should replace expireIn");
     }
 
     @Test
-    void testExpireAtAlwaysTakesPrecedenceRegardlessOfOrder()
+    void testExpireInReplacesEarlierExpireAt()
     {
-        // Even if expireAt is set first and then expireIn, expireAt still wins
-        // because getExpireDate() checks instant before duration
-        Date fixedDate = new Date(1381356586000L);
-        
+        long beforeTime = System.currentTimeMillis() / 1000;
+
         CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
-            .expireAt(fixedDate)          // Set expireAt first
-            .expireIn(1, TimeUnit.HOURS); // Then set expireIn - still ignored
-        
-        String url = builder.toString();
-        
-        String expiresParam = extractParameter(url, "Expires");
-        long expiresValue = Long.parseLong(expiresParam);
-        
-        // expireAt should still take precedence
-        assertEquals(1381356586L, expiresValue, "expireAt should take precedence regardless of call order");
+            .expireAt(new Date(1381356586000L))
+            .expireIn(1, TimeUnit.HOURS);
+
+        long expiresValue = Long.parseLong(extractParameter(builder.toString(), "Expires"));
+
+        assertTrue(expiresValue >= beforeTime + 3600, "the later expireIn should replace expireAt");
+    }
+
+    @Test
+    void testExpireInRejectsNonPositiveDuration()
+    {
+        CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem);
+
+        assertThrows(IllegalArgumentException.class, () -> builder.expireIn(0, TimeUnit.HOURS));
+        assertThrows(IllegalArgumentException.class, () -> builder.expireIn(-1, TimeUnit.HOURS));
     }
 
     @Test
@@ -242,6 +245,44 @@ class CloudfrontUrlBuilderTest
         
         assertTrue(url.startsWith("https://"), "URL should use HTTPS when withSsl() is called");
         assertTrue(url.contains("Expires="), "URL should still contain signing parameters");
+    }
+
+    @Test
+    void testConcurrentToStringProducesIdenticalUrls() throws Exception
+    {
+        CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
+            .expireAt(Instant.ofEpochSecond(1381356586L));
+        String expectedUrl = builder.toString();
+        Callable<String> buildUrl = builder::toString;
+
+        ExecutorService executor = Executors.newFixedThreadPool(8);
+        try
+        {
+            List<Future<String>> urls = new ArrayList<>();
+            for (int i = 0; i < 400; i++)
+            {
+                urls.add(executor.submit(buildUrl));
+            }
+
+            for (Future<String> url : urls)
+            {
+                assertEquals(expectedUrl, url.get());
+            }
+        }
+        finally
+        {
+            executor.shutdownNow();
+        }
+    }
+
+    @Test
+    void testNullParameterValueRendersKeyOnly()
+    {
+        CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
+            .addParameter("download", null)
+            .expireAt(Instant.ofEpochSecond(1381356586L));
+
+        assertTrue(builder.toString().startsWith("http://dnnfhn216qiqy.cloudfront.net/test.jpeg?download&Expires=1381356586&"));
     }
 
     @Nested
@@ -414,7 +455,7 @@ class CloudfrontUrlBuilderTest
         }
 
         @Test
-        void testInstantTakesPrecedenceOverExpireIn()
+        void testInstantReplacesEarlierExpireIn()
         {
             Instant fixedInstant = Instant.ofEpochSecond(1381356586L);
             
@@ -425,7 +466,7 @@ class CloudfrontUrlBuilderTest
             String url = builder.toString();
             String expiresParam = extractParameter(url, "Expires");
             
-            assertEquals("1381356586", expiresParam, "expireAt(Instant) should take precedence over expireIn");
+            assertEquals("1381356586", expiresParam, "the later expireAt(Instant) should replace expireIn");
         }
     }
 

@@ -1,6 +1,7 @@
 package com.widen.urlbuilder;
 
 import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
 import java.security.PrivateKey;
 import java.security.Signature;
 import java.time.Instant;
@@ -193,17 +194,16 @@ public class CloudfrontUrlBuilder
      * <p>The actual expiration time is calculated when {@link #toString()} is called,
      * allowing the same builder to generate URLs with fresh expiration times.
      *
-     * @param duration The duration value
+     * <p>Replaces an expiration set earlier with {@code expireAt}.
+     *
+     * @param duration The duration value (must be positive)
      * @param unit The time unit for the duration
      * @return This builder for method chaining
-     * @throws IllegalArgumentException if {@code unit} is null
+     * @throws IllegalArgumentException if {@code unit} is null or {@code duration} is not positive
      */
     public CloudfrontUrlBuilder expireIn(long duration, TimeUnit unit)
     {
-        InternalUtils.checkNotNull(unit, "unit");
-
-        expireDate.duration = duration;
-        expireDate.unit = unit;
+        expireDate.expireIn(duration, unit);
 
         return this;
     }
@@ -215,20 +215,21 @@ public class CloudfrontUrlBuilder
      * 
      * @param date The absolute date/time when the URL should expire
      * @return This builder for method chaining
+     * @throws IllegalArgumentException if date is null
      * @deprecated Use {@link #expireAt(Instant)} instead. This method will be removed in a future version.
      */
     @Deprecated
     public CloudfrontUrlBuilder expireAt(Date date)
     {
         InternalUtils.checkNotNull(date, "date");
-        expireDate.instant = date.toInstant();
-        return this;
+        return expireAt(date.toInstant());
     }
 
     /**
      * Sets the absolute expiration time for the URL using a Java 8+ Instant.
      * 
      * <p>The expiration time is accurate to seconds (nanoseconds are truncated).
+     * It replaces an expiration set earlier with {@code expireIn}.
      * 
      * <p>Example usage:
      * <pre>{@code
@@ -242,8 +243,7 @@ public class CloudfrontUrlBuilder
      */
     public CloudfrontUrlBuilder expireAt(Instant instant)
     {
-        InternalUtils.checkNotNull(instant, "instant");
-        expireDate.instant = instant;
+        expireDate.expireAt(instant);
         return this;
     }
 
@@ -300,52 +300,16 @@ public class CloudfrontUrlBuilder
      */
     private Map<String, String> signUrl(UrlSigner.SigningContext context)
     {
-        String cannedPolicy = String.format("{\"Statement\":[{\"Resource\":\"%s\",\"Condition\":{\"DateLessThan\":{\"AWS:EpochTime\":%s}}}]}", context.getUrl(), expireDate.getExpiresUtcSeconds());
+        // Read the expiry once: a relative expiry moves with the clock, and the policy must match the Expires parameter.
+        long expires = expireDate.getExpireDate().getEpochSecond();
+        String cannedPolicy = String.format("{\"Statement\":[{\"Resource\":\"%s\",\"Condition\":{\"DateLessThan\":{\"AWS:EpochTime\":%s}}}]}", context.getUrl(), expires);
         String signature = trustedSignerCredentials.sign(cannedPolicy);
 
         Map<String, String> params = new LinkedHashMap<>();
-        params.put("Expires", String.valueOf(expireDate.getExpiresUtcSeconds()));
+        params.put("Expires", String.valueOf(expires));
         params.put("Signature", signature);
         params.put("Key-Pair-Id", trustedSignerCredentials.accessKeyId);
         return params;
-    }
-
-    /**
-     * Internal class to hold expiration date configuration.
-     * 
-     * <p>Supports both relative (duration + unit) and absolute (Instant) expiration times.
-     */
-    private static class ExpireDateHolder
-    {
-        long duration;
-
-        TimeUnit unit;
-
-        Instant instant;
-
-        Instant getExpireDate()
-        {
-            if (instant != null)
-            {
-                return instant;
-            }
-
-            if (duration == 0)
-            {
-                return null;
-            }
-
-            long futureMillis = unit.toMillis(duration) + System.currentTimeMillis();
-
-            return Instant.ofEpochMilli(futureMillis);
-        }
-
-        long getExpiresUtcSeconds()
-        {
-            Instant date = getExpireDate();
-            InternalUtils.checkNotNull(date, "expire date");
-            return date.getEpochSecond();
-        }
     }
 
     /**
@@ -363,7 +327,9 @@ public class CloudfrontUrlBuilder
     {
         private final String accessKeyId;
 
-        private final Signature signer;
+        private final PrivateKey privateKey;
+
+        private final String cryptoProvider;
 
         /**
          * Creates trusted signer credentials for CloudFront URL signing.
@@ -376,16 +342,26 @@ public class CloudfrontUrlBuilder
         public TrustedSignerCredentials(String accessKeyId, PrivateKey privateKey, String cryptoProvider)
         {
             this.accessKeyId = accessKeyId;
+            this.privateKey = privateKey;
+            this.cryptoProvider = cryptoProvider;
 
             try
             {
-                signer = Signature.getInstance("SHA1WithRSA", cryptoProvider);
-                signer.initSign(privateKey);
+                // Reject an unusable provider or key here instead of on the first sign().
+                newSigner();
             }
             catch (Exception e)
             {
                 throw new RuntimeException(e);
             }
+        }
+
+        // A Signature holds the state of one signing operation, so each call to sign() needs its own.
+        private Signature newSigner() throws GeneralSecurityException
+        {
+            Signature signer = Signature.getInstance("SHA1WithRSA", cryptoProvider);
+            signer.initSign(privateKey);
+            return signer;
         }
 
         /**
@@ -412,6 +388,7 @@ public class CloudfrontUrlBuilder
         {
             try
             {
+                Signature signer = newSigner();
                 signer.update(text.getBytes(StandardCharsets.UTF_8));
                 byte[] bytes = signer.sign();
 

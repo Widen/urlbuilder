@@ -14,9 +14,11 @@ public class HttpUtils
         // range.
         // In addition, many browsers do not support escape sequences or percent encoding properly either, so strip out
         // the following characters: \ " %
+        // The pattern is an alternation because a negated class with a nested class, [^a[b]], means "not a, or b" on
+        // Java 8 and "neither a nor b" on Java 9 and later.
         String asciiFilename = Normalizer
             .normalize(filename, Normalizer.Form.NFD)
-            .replaceAll("[^\\x20-\\x7E[\\\\\"%]]", "");
+            .replaceAll("[^\\x20-\\x7E]|[\\\\\"%]", "");
 
         // Create the base header value.
         String header = String.format("%s; filename=\"%s\"", type, asciiFilename);

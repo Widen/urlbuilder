@@ -265,7 +265,7 @@ public class UrlBuilder {
      * @return the formatted query string (without the leading {@code ?})
      */
     public String getQueryParameterString() {
-        return buildParams();
+        return buildParams(queryParams);
     }
 
     /**
@@ -348,8 +348,8 @@ public class UrlBuilder {
      * but before the final URL string is constructed. This allows the signer to inspect
      * the complete unsigned URL and generate appropriate signature parameters.
      * <p>
-     * Signature parameters returned by the signer are appended to the URL without
-     * additional encoding, as they are expected to be pre-encoded if necessary.
+     * Parameters returned by the signer are appended to the query string and encoded with
+     * the query encoder, like parameters added with {@link #addParameter(String, Object)}.
      *
      * @param signer The URL signer, or null to disable signing
      * @return This builder for chaining
@@ -540,7 +540,7 @@ public class UrlBuilder {
      */
     public UrlBuilder addParameters(Map<String, ?> params) {
         for (Entry<String, ?> e : params.entrySet()) {
-            addParameter(e.getKey(), e.getValue().toString());
+            addParameter(e.getKey(), e.getValue());
         }
         return this;
     }
@@ -694,7 +694,7 @@ public class UrlBuilder {
         String queryString;
         if (urlSigner != null) {
             // Build unsigned URL for signing context
-            String unsignedQueryString = buildParams();
+            String unsignedQueryString = buildParams(queryParams);
             StringBuilder unsignedUrl = new StringBuilder(url);
             if (!unsignedQueryString.isEmpty()) {
                 unsignedUrl.append("?").append(unsignedQueryString);
@@ -703,11 +703,10 @@ public class UrlBuilder {
             // Invoke signer
             UrlSigner.SigningContext context = buildSigningContext(unsignedUrl.toString());
             Map<String, String> signatureParams = urlSigner.sign(context);
-            
-            // Build final query string with signature params (without mutating queryParams list)
-            queryString = buildParamsWithSignature(signatureParams);
+
+            queryString = buildParams(withSignatureParams(signatureParams));
         } else {
-            queryString = buildParams();
+            queryString = buildParams(queryParams);
         }
 
         if (!queryString.isEmpty()) {
@@ -722,56 +721,40 @@ public class UrlBuilder {
         return url.toString();
     }
 
-    private String buildParams() {
-        StringBuilder params = new StringBuilder();
+    private String buildParams(List<QueryParam> params) {
+        StringBuilder query = new StringBuilder();
 
         boolean first = true;
 
-        for (QueryParam qp : queryParams) {
+        for (QueryParam qp : params) {
             if (!first) {
-                params.append("&");
+                query.append("&");
             }
 
-            params.append(qp.toString());
+            query.append(qp.toString());
 
             first = false;
         }
 
-        return params.toString();
+        return query.toString();
     }
 
     /**
-     * Build query string with additional signature parameters WITHOUT mutating queryParams list.
+     * Returns the query parameters followed by the signer's parameters. The signer's parameters are not added to
+     * {@link #queryParams}, so the next call to toString() signs the same unsigned URL.
      */
-    private String buildParamsWithSignature(Map<String, String> signatureParams) {
-        StringBuilder params = new StringBuilder();
-        boolean first = true;
+    private List<QueryParam> withSignatureParams(Map<String, String> signatureParams) {
+        List<QueryParam> params = new ArrayList<>(queryParams);
 
-        // Add original query parameters
-        for (QueryParam qp : queryParams) {
-            if (!first) {
-                params.append("&");
-            }
-            params.append(qp.toString());
-            first = false;
-        }
-
-        // Add signature parameters (without encoding - they're pre-encoded)
-        if (signatureParams != null && !signatureParams.isEmpty()) {
-            for (Map.Entry<String, String> entry : signatureParams.entrySet()) {
-                if (entry.getValue() != null) {
-                    if (!first) {
-                        params.append("&");
-                    }
-                    params.append(entry.getKey());
-                    params.append("=");
-                    params.append(entry.getValue());
-                    first = false;
+        if (signatureParams != null) {
+            for (Entry<String, String> entry : signatureParams.entrySet()) {
+                if (StringUtilsInternal.isNotBlank(entry.getKey()) && entry.getValue() != null) {
+                    params.add(new QueryParam(entry.getKey(), entry.getValue(), queryEncoder));
                 }
             }
         }
 
-        return params.toString();
+        return params;
     }
 
     /**
@@ -793,7 +776,7 @@ public class UrlBuilder {
             encodedPath = "/";
         }
         
-        String encodedQuery = buildParams();
+        String encodedQuery = buildParams(queryParams);
         
         // Build raw (unencoded) parameters map
         Map<String, String> parameters = new LinkedHashMap<>();

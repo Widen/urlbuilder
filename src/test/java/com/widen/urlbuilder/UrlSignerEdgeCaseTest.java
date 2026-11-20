@@ -200,7 +200,6 @@ class UrlSignerEdgeCaseTest {
         UrlBuilder builder = new UrlBuilder("example.com", "");
         builder.usingUrlSigner(context -> Collections.singletonMap("sig", ""));
         
-        String url = builder.toString();
-        assertTrue(url.contains("sig="));
+        assertEquals("http://example.com/?sig", builder.toString());
     }
 }
