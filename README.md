@@ -280,7 +280,7 @@ URL url = builder.toURL();
 
 ## Controlling encoding
 
-The default encoders follow RFC 3986:
+The default encoders follow [RFC 3986](https://www.rfc-editor.org/rfc/rfc3986):
 
 * [`PathSegmentEncoder`](/src/main/java/com/widen/urlbuilder/PathSegmentEncoder.java) encodes path segments. It leaves
   `@`, `:`, and the sub-delimiters `!$&'()*+,;=` as they are.
