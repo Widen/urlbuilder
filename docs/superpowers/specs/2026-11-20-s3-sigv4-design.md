@@ -110,7 +110,8 @@ https://my-bucket.s3.us-west-2.amazonaws.com/docs/a%20b.txt
   3. The canonical query string: every query parameter except `X-Amz-Signature`, including
      `response-content-disposition` and `response-content-type`, each name and value encoded with the unreserved set
      (`A-Z a-z 0-9 - . _ ~`), sorted by encoded name.
-  4. `host:` followed by the URL's host, plus `:PORT` when the URL writes a port; then an empty line.
+  4. `host:` followed by the host as HTTP clients send it: the URL's host in lower case, plus `:PORT` when the URL
+     writes a port other than the default of its scheme; then an empty line.
   5. `host`
   6. `UNSIGNED-PAYLOAD`
 - String to sign: `AWS4-HMAC-SHA256`, the `X-Amz-Date` value, the credential scope `YYYYMMDD/REGION/s3/aws4_request`,
