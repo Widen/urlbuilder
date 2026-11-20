@@ -751,7 +751,7 @@ public class S3UrlBuilder
      *
      * @param signingTime the moment the URL is signed, written as {@code X-Amz-Date}
      * @param expireTime the expiration, from which {@code X-Amz-Expires} counts whole seconds after signingTime
-     * @param requestPath the encoded path exactly as the URL writes it
+     * @param requestPath the encoded path as the URL writes it
      * @param builder the URL builder whose hostname and query parameters the signature covers
      * @throws IllegalStateException if no region is set
      * @throws IllegalArgumentException if the URL expires less than 1 second or more than 7 days after signingTime
@@ -788,8 +788,11 @@ public class S3UrlBuilder
         }
         params.put("X-Amz-SignedHeaders", "host");
 
+        // S3 decodes the path before it signs it, so the %2F that keeps a run of slashes apart signs as a slash
+        String canonicalUri = requestPath.replace("%2F", "/");
+
         String canonicalRequest = "GET\n"
-            + requestPath + "\n"
+            + canonicalUri + "\n"
             + canonicalQueryString(builder.queryParams, params) + "\n"
             + "host:" + builder.getHostname() + "\n"
             + "\n"
