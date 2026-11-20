@@ -848,14 +848,14 @@ public class UrlBuilder {
 
         /**
          * @param defaultEncoder the builder's query encoder at the time the URL is written
-         * @return the encoded key, followed by "=" and the encoded value unless the value is blank
+         * @return the encoded key, followed by "=" and the encoded value unless the value is null or empty
          */
         String encode(Encoder defaultEncoder) {
             Encoder effectiveEncoder = encoder != null ? encoder : defaultEncoder;
 
             StringBuilder sb = new StringBuilder();
             sb.append(effectiveEncoder.encode(key));
-            if (StringUtilsInternal.isNotBlank(value)) {
+            if (!StringUtilsInternal.isEmpty(value)) {
                 sb.append("=").append(effectiveEncoder.encode(value));
             }
             return sb.toString();
