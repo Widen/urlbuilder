@@ -2,8 +2,10 @@ package com.widen.urlbuilder;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
 import java.util.Date;
@@ -80,7 +82,7 @@ class S3UrlBuilderTest
     @Disabled("Dependency on a private key")
     void testHostnameAndPathStyleStringsAreTheSameSignature()
     {
-        S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat.jpeg").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
+        S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat.jpeg").expireAt(farFuture).usingSignatureVersion2().usingCredentials(awsAccount, awsPrivateKey);
 
         String dns = builder.toString();
 
@@ -104,7 +106,7 @@ class S3UrlBuilderTest
     @Disabled("Dependency on a private key")
     void testExpiringAttachmentFilename()
     {
-        S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat3-public.jpeg").withAttachmentFilename("kitty-cat.jpg").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
+        S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat3-public.jpeg").withAttachmentFilename("kitty-cat.jpg").expireAt(farFuture).usingSignatureVersion2().usingCredentials(awsAccount, awsPrivateKey);
 
         assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/cat3-public.jpeg?response-content-disposition=attachment%3B%20filename%3D%22kitty-cat.jpg%22&Expires=1522540800&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Signature=jH%2BRr3TEjvu2Wk7cq9ER7ybdErg%3D", builder.toString());
     }
@@ -121,7 +123,7 @@ class S3UrlBuilderTest
     @Disabled("Dependency on a private key")
     void testHashDoesNotChangeSignature()
     {
-        S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat3-public.jpeg").usingCredentials(awsAccount, awsPrivateKey).expireAt(farFuture);
+        S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat3-public.jpeg").usingSignatureVersion2().usingCredentials(awsAccount, awsPrivateKey).expireAt(farFuture);
 
         assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/cat3-public.jpeg?Expires=1522540800&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Signature=C39yfdpfO072isjVyekpC4t1GjQ%3D", builder.toString());
 
@@ -142,7 +144,7 @@ class S3UrlBuilderTest
     @Disabled("Dependency on a private key")
     void testNonAsciiCharsInAttachment()
     {
-        S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "foo.jpeg").withAttachmentFilename("+ƒoo.jpeg").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
+        S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "foo.jpeg").withAttachmentFilename("+ƒoo.jpeg").expireAt(farFuture).usingSignatureVersion2().usingCredentials(awsAccount, awsPrivateKey);
 
         assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/foo.jpeg?response-content-disposition=attachment%3B%20filename%3D%22%2Boo.jpeg%22%3B%20filename*%3DUTF-8%27%27%252B%25C6%2592oo.jpeg&Signature=eBNNBRl7DlXOjhIb5YSlpR9BPOg%3D&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Expires=1522540800", builder.toString());
     }
@@ -151,7 +153,7 @@ class S3UrlBuilderTest
     @Disabled("Dependency on a private key")
     void testOnlyNonAsciiCharsInAttachment()
     {
-        S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "foo.jpeg").withAttachmentFilename("ƒƒƒƒƒ").expireAt(farFuture).usingCredentials(awsAccount, awsPrivateKey);
+        S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "foo.jpeg").withAttachmentFilename("ƒƒƒƒƒ").expireAt(farFuture).usingSignatureVersion2().usingCredentials(awsAccount, awsPrivateKey);
 
         assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/foo.jpeg?Signature=E2ee6O2hY968RWZKkYTE29ZNCDk%3D&AWSAccessKeyId=AKIAJKECYSQBZYJDUDSQ&Expires=1522540800", builder.toString());
     }
@@ -165,6 +167,7 @@ class S3UrlBuilderTest
             .withAttachmentFilename("a.pdf")
             .withContentType("application/pdf")
             .expireAt(Instant.ofEpochSecond(1522540800L))
+            .usingSignatureVersion2()
             .usingCredentials("AKIAIOSFODNN7EXAMPLE", secretKey);
 
         String stringToSign = "GET\n\n\n1522540800\n/test-bucket/test-key.txt"
@@ -181,6 +184,7 @@ class S3UrlBuilderTest
 
         String url = new S3UrlBuilder("test-bucket", "test-key.txt")
             .expireAt(Instant.ofEpochSecond(1522540800L))
+            .usingSignatureVersion2()
             .usingCredentials("AKIAIOSFODNN7EXAMPLE", secretKey, "session-token")
             .toString();
 
@@ -198,11 +202,13 @@ class S3UrlBuilderTest
 
         String hostnameStyle = new S3UrlBuilder("test-bucket", "test-key.txt")
             .expireAt(Instant.ofEpochSecond(1522540800L))
+            .usingSignatureVersion2()
             .usingCredentials("AKIAIOSFODNN7EXAMPLE", secretKey)
             .toString();
         String pathStyle = new S3UrlBuilder("test-bucket", "test-key.txt")
             .usingBucketInPath()
             .expireAt(Instant.ofEpochSecond(1522540800L))
+            .usingSignatureVersion2()
             .usingCredentials("AKIAIOSFODNN7EXAMPLE", secretKey)
             .toString();
 
@@ -250,11 +256,13 @@ class S3UrlBuilderTest
 
         String hostnameStyle = new S3UrlBuilder("test-bucket", "docs/a+b é.txt")
             .expireAt(Instant.ofEpochSecond(1522540800L))
+            .usingSignatureVersion2()
             .usingCredentials("AKIAIOSFODNN7EXAMPLE", secretKey)
             .toString();
         String pathStyle = new S3UrlBuilder("test-bucket", "docs/a+b é.txt")
             .usingBucketInPath()
             .expireAt(Instant.ofEpochSecond(1522540800L))
+            .usingSignatureVersion2()
             .usingCredentials("AKIAIOSFODNN7EXAMPLE", secretKey)
             .toString();
 
@@ -288,6 +296,7 @@ class S3UrlBuilderTest
     void testFailedToStringLeavesNoParametersBehind()
     {
         S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
+            .usingSignatureVersion2()
             .withContentType("application/pdf")
             .expireAt(Instant.ofEpochSecond(1522540800L));
 
@@ -309,6 +318,7 @@ class S3UrlBuilderTest
             
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
                 .expireAt(fixedDate)
+                .usingSignatureVersion2()
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
             
             String url = builder.toString();
@@ -333,6 +343,7 @@ class S3UrlBuilderTest
             
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
                 .expireAt(fixedDate)
+                .usingSignatureVersion2()
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
             
             String url1 = builder.toString();
@@ -349,6 +360,7 @@ class S3UrlBuilderTest
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
                 .usingSsl()
                 .expireAt(fixedDate)
+                .usingSignatureVersion2()
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
             
             String url = builder.toString();
@@ -365,6 +377,7 @@ class S3UrlBuilderTest
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
                 .inRegion("eu-west-1")
                 .expireAt(fixedDate)
+                .usingSignatureVersion2()
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
             
             String url = builder.toString();
@@ -384,6 +397,7 @@ class S3UrlBuilderTest
             
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
                 .expireAt(fixedInstant)
+                .usingSignatureVersion2()
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
             
             String url = builder.toString();
@@ -408,6 +422,7 @@ class S3UrlBuilderTest
             
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
                 .expireAt(fixedInstant)
+                .usingSignatureVersion2()
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
             
             String url1 = builder.toString();
@@ -433,6 +448,7 @@ class S3UrlBuilderTest
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
                 .usingSsl()
                 .expireAt(fixedInstant)
+                .usingSignatureVersion2()
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
             
             String url = builder.toString();
@@ -449,6 +465,7 @@ class S3UrlBuilderTest
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
                 .inRegion("us-west-2")
                 .expireAt(fixedInstant)
+                .usingSignatureVersion2()
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
             
             String url = builder.toString();
@@ -464,6 +481,7 @@ class S3UrlBuilderTest
             
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
                 .expireAt(futureInstant)
+                .usingSignatureVersion2()
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
             
             String url = builder.toString();
@@ -485,10 +503,12 @@ class S3UrlBuilderTest
             
             S3UrlBuilder builderWithDate = new S3UrlBuilder("test-bucket", "test-key.txt")
                 .expireAt(date)
+                .usingSignatureVersion2()
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
             
             S3UrlBuilder builderWithInstant = new S3UrlBuilder("test-bucket", "test-key.txt")
                 .expireAt(instant)
+                .usingSignatureVersion2()
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
             
             String urlWithDate = builderWithDate.toString();
@@ -507,6 +527,7 @@ class S3UrlBuilderTest
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
                 .expireIn(Duration.ofHours(1))
                 .expireAt(fixedInstant)
+                .usingSignatureVersion2()
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
             
             String url = builder.toString();
@@ -523,6 +544,7 @@ class S3UrlBuilderTest
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
                 .expireIn(Duration.ofHours(1))
                 .expireAt(fixedDate)
+                .usingSignatureVersion2()
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
             
             String url = builder.toString();
@@ -542,6 +564,7 @@ class S3UrlBuilderTest
             
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
                 .expireIn(Duration.ofHours(1))
+                .usingSignatureVersion2()
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
             
             String url = builder.toString();
@@ -565,6 +588,7 @@ class S3UrlBuilderTest
             
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
                 .expireIn(30, TimeUnit.MINUTES)
+                .usingSignatureVersion2()
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
             
             String url = builder.toString();
@@ -589,6 +613,7 @@ class S3UrlBuilderTest
 
             String url = new S3UrlBuilder("test-bucket", "test-key.txt")
                 .expireIn(400L * 365, TimeUnit.DAYS)
+                .usingSignatureVersion2()
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
                 .toString();
 
@@ -597,6 +622,19 @@ class S3UrlBuilderTest
 
             assertTrue(expiresValue >= beforeTime + fourHundredYears && expiresValue <= afterTime + fourHundredYears,
                 "Expires should be approximately 400 years from now");
+        }
+
+        @Test
+        void testExpireInCountsFromBuilderClock()
+        {
+            String url = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .usingSignatureVersion2()
+                .usingClock(Clock.fixed(Instant.ofEpochSecond(1522540800L), ZoneOffset.UTC))
+                .expireIn(Duration.ofHours(1))
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
+                .toString();
+
+            assertEquals("1522544400", extractParameter(url, "Expires"));
         }
 
         @Test

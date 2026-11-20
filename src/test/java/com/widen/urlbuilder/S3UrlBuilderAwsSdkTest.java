@@ -56,6 +56,7 @@ class S3UrlBuilderAwsSdkTest
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", key)
                 .usingSsl()
                 .expireAt(expiration)
+                .usingSignatureVersion2()
                 .usingCredentials(accessKey, secretKey);
             if (pathStyle)
             {
@@ -75,6 +76,7 @@ class S3UrlBuilderAwsSdkTest
         String url = new S3UrlBuilder("test-bucket", key)
             .usingSsl()
             .expireAt(expiration)
+            .usingSignatureVersion2()
             .usingCredentials(accessKey, secretKey, "session/token+=")
             .toString();
 
@@ -98,6 +100,7 @@ class S3UrlBuilderAwsSdkTest
             .withAttachmentFilename(filename)
             .withContentType("application/pdf")
             .expireAt(expiration)
+            .usingSignatureVersion2()
             .usingCredentials(accessKey, secretKey)
             .toString();
 
