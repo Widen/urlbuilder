@@ -217,6 +217,7 @@ class CloudfrontUrlBuilderTest
         assertThrows(IllegalArgumentException.class, () -> builder.expireIn(Duration.ZERO));
         assertThrows(IllegalArgumentException.class, () -> builder.expireIn(Duration.ofHours(-1)));
         assertThrows(IllegalArgumentException.class, () -> builder.expireIn(0, TimeUnit.HOURS));
+        assertThrows(IllegalArgumentException.class, () -> builder.expireIn(-1, TimeUnit.HOURS));
     }
 
     @Test

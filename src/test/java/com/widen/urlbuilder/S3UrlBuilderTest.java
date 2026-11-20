@@ -478,6 +478,24 @@ class S3UrlBuilderTest
         }
 
         @Test
+        void testExpireInWithTimeUnitKeepsDurationsLongerThanLongNanoseconds()
+        {
+            long fourHundredYears = Duration.ofDays(400L * 365).getSeconds();
+            long beforeTime = Instant.now().getEpochSecond();
+
+            String url = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .expireIn(400L * 365, TimeUnit.DAYS)
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
+                .toString();
+
+            long afterTime = Instant.now().getEpochSecond();
+            long expiresValue = Long.parseLong(extractParameter(url, "Expires"));
+
+            assertTrue(expiresValue >= beforeTime + fourHundredYears && expiresValue <= afterTime + fourHundredYears,
+                "Expires should be approximately 400 years from now");
+        }
+
+        @Test
         void testExpireInReturnsBuilderForChaining()
         {
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt");
@@ -495,6 +513,7 @@ class S3UrlBuilderTest
             assertThrows(IllegalArgumentException.class, () -> builder.expireIn(Duration.ZERO));
             assertThrows(IllegalArgumentException.class, () -> builder.expireIn(Duration.ofHours(-1)));
             assertThrows(IllegalArgumentException.class, () -> builder.expireIn(0, TimeUnit.HOURS));
+            assertThrows(IllegalArgumentException.class, () -> builder.expireIn(-1, TimeUnit.HOURS));
         }
     }
 

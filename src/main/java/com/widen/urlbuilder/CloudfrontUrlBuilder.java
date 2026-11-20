@@ -222,8 +222,8 @@ public class CloudfrontUrlBuilder
      */
     public CloudfrontUrlBuilder expireIn(long duration, TimeUnit unit)
     {
-        InternalUtils.checkNotNull(unit, "unit");
-        return expireIn(Duration.ofNanos(unit.toNanos(duration)));
+        expireDate.expireIn(duration, unit);
+        return this;
     }
 
     /**
