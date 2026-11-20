@@ -50,7 +50,9 @@ CloudFront builders. Some URLs differ from the ones version 2 produced, so read 
    - A parameter added with its own encoder, through `addParameter(key, value, encoder)`, keeps that encoder.
    - `S3UrlBuilder` and `CloudfrontUrlBuilder` always use the 3.0 encoding.
 2. **Replace `usingEncoder(Encoder)`.** Call `usingPathEncoder(Encoder)`, `usingQueryEncoder(Encoder)`, or both.
-   `LegacyEncoder` replaces `BuiltinEncoder`.
+   `LegacyEncoder` replaces `BuiltinEncoder`. Check code that calls it after adding parameters: `usingEncoder` encoded
+   only the parameters added after the call, and `usingQueryEncoder` encodes every parameter, including the ones added
+   before it. To encode one parameter differently, pass its encoder to `addParameter(key, value, encoder)`.
 3. **Expect unencoded text from `getPath()` and `getPathSegments()`.** They returned percent-encoded text in 2.x.
 4. **Check code that parses a URL and writes it back.** `new UrlBuilder(String)` now decodes the path, so `/a%20b` stays
    `/a%20b`. In 2.x it became `/a%2520b`.
