@@ -361,7 +361,8 @@ The details:
   `/`, as the AWS SDKs do. So `a%20b.txt` names that object and not `a b.txt`, and S3 does not read the `+` in
   `a+b.txt` as a space. The builder drops leading slashes and keeps every other slash, because `folder/` and `a//b` are
   keys of their own. After the first slash of a run it writes `%2F`, as the AWS SDKs do, so `a//b` becomes `a/%2Fb`
-  and no HTTP client or proxy can merge the slashes. `CloudfrontUrlBuilder` keeps the slashes of its key as given.
+  and no HTTP client or proxy can merge the slashes. `CloudfrontUrlBuilder` encodes its key the same way, for an S3
+  origin, and keeps the slashes as given.
 * **Expiration:** `expireIn(Duration)` counts from the moment the URL is generated, and `expireAt(Instant)` sets a fixed
   time. The later call replaces the earlier one.
 * **Credentials:** a signed URL needs an expiration and `usingCredentials`, which also accepts an STS session token. The

@@ -48,8 +48,8 @@ CloudFront builders. Some URLs differ from the ones version 2 produced, so read 
    It has two limits:
 
    - A parameter added with its own encoder, through `addParameter(key, value, encoder)`, keeps that encoder.
-   - `S3UrlBuilder` and `CloudfrontUrlBuilder` always use the 3.0 encoding. An S3 key encodes every character except
-     letters, digits, `-._~`, and `/`, as the AWS SDKs do, so it differs from 2.x only in writing `*` as `%2A` and
+   - `S3UrlBuilder` and `CloudfrontUrlBuilder` always use the 3.0 encoding. Their keys encode every character except
+     letters, digits, `-._~`, and `/`, as the AWS SDKs do, so they differ from 2.x only in writing `*` as `%2A` and
      keeping `~`.
 2. **Replace `usingEncoder(Encoder)`.** Call `usingPathEncoder(Encoder)`, `usingQueryEncoder(Encoder)`, or both.
    `LegacyEncoder` replaces `BuiltinEncoder`. Check code that calls it after adding parameters: `usingEncoder` encoded

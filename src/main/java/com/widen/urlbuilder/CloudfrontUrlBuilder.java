@@ -123,8 +123,10 @@ public class CloudfrontUrlBuilder
     /**
      * Sets the resource key (path) within the CloudFront distribution.
      *
-     * <p>Leading slashes are dropped, and every other slash is kept, so {@code folder/} and
-     * {@code a//b} reach the origin as given.
+     * <p>The key is literal text: the builder encodes every character except letters, digits,
+     * {@code -._~}, and {@code /}, so an S3 origin does not read the {@code +} in {@code a+b.pdf}
+     * as a space. Leading slashes are dropped, and every other slash is kept, so {@code folder/}
+     * and {@code a//b} reach the origin as given.
      *
      * @param key The path to the resource (e.g., "/videos/movie.mp4")
      * @return This builder for method chaining
@@ -290,7 +292,8 @@ public class CloudfrontUrlBuilder
     {
         InternalUtils.checkNotNull(expireDate.getExpireDate(), "Expire date");
 
-        UrlBuilder builder = new UrlBuilder();
+        // An S3 origin reads "+" in a path as a space, so encode keys as S3UrlBuilder does
+        UrlBuilder builder = new UrlBuilder().usingPathEncoder(new QueryParameterEncoder());
 
         builder.withHostname(distributionHostname);
         builder.withExactPathSegments(UrlBuilder.objectKeySegments(key));
