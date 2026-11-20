@@ -517,9 +517,7 @@ public class UrlBuilder {
      * @return this builder for method chaining
      */
     public UrlBuilder addParameter(String key, Object value) {
-        if (StringUtilsInternal.isNotBlank(key)) {
-            queryParams.add(new QueryParam(key, value != null ? value.toString() : null, null));
-        }
+        addQueryParam(queryParams, key, value, null);
         return this;
     }
 
@@ -532,10 +530,19 @@ public class UrlBuilder {
      * @return this builder for method chaining
      */
     public UrlBuilder addParameter(String key, Object value, Encoder encoder) {
-        if (StringUtilsInternal.isNotBlank(key)) {
-            queryParams.add(new QueryParam(key, value != null ? value.toString() : null, encoder));
-        }
+        addQueryParam(queryParams, key, value, encoder);
         return this;
+    }
+
+    /**
+     * Appends a parameter to {@code params}, unless the key is blank. A null value adds the key alone.
+     *
+     * @param encoder the encoder for this parameter alone, or null to use the builder's query encoder
+     */
+    static void addQueryParam(List<QueryParam> params, String key, Object value, Encoder encoder) {
+        if (StringUtilsInternal.isNotBlank(key)) {
+            params.add(new QueryParam(key, value != null ? value.toString() : null, encoder));
+        }
     }
 
     /**

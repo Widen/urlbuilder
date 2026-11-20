@@ -15,6 +15,7 @@ package com.widen.urlbuilder;
 
 import org.junit.jupiter.api.Test;
 import java.util.*;
+import java.util.function.Function;
 import static org.junit.jupiter.api.Assertions.*;
 
 class UrlBuilderSigningTest {
@@ -106,6 +107,26 @@ class UrlBuilderSigningTest {
             });
 
         assertEquals("http://example.com/test?key%20id=a%26b&signature=s", builder.toString());
+    }
+
+    @Test
+    void testSignerCannotAddParametersAfterReadingTheTextToSign() {
+        List<Function<UrlSigner.SigningContext, String>> textToSign = Arrays.asList(
+            UrlSigner.SigningContext::getStringToSign,
+            UrlSigner.SigningContext::getUrl,
+            UrlSigner.SigningContext::getEncodedQuery,
+            UrlSigner.SigningContext::getEncodedPathAndQuery);
+
+        for (Function<UrlSigner.SigningContext, String> read : textToSign) {
+            UrlBuilder builder = new UrlBuilder("example.com", "/test")
+                .usingUrlSigner(context -> {
+                    String signature = read.apply(context);
+                    context.addParameter("key-id", "k2");
+                    return Collections.singletonMap("signature", signature);
+                });
+
+            assertThrows(IllegalStateException.class, builder::toString);
+        }
     }
 
     @Test

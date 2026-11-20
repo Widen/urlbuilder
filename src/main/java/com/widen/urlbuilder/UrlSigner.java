@@ -80,10 +80,15 @@ public interface UrlSigner {
          * The parameter belongs to this one signing, not to the builder: the next call to
          * {@link UrlBuilder#toString()} starts again from the builder's own parameters.
          *
+         * <p>Add every parameter before reading the text to sign. A signature computed earlier
+         * would not cover a parameter added later, so the context rejects the call.
+         *
          * @param name The parameter name; a blank name adds nothing
          * @param value The parameter value, written with its {@code toString()} and encoded by the
          *        builder; null adds the name alone
          * @return This context for chaining
+         * @throws IllegalStateException if the signer has already called {@link #getStringToSign()},
+         *         {@link #getUrl()}, {@link #getEncodedQuery()}, or {@link #getEncodedPathAndQuery()}
          */
         SigningContext addParameter(String name, Object value);
 
@@ -201,10 +206,14 @@ public interface UrlSigner {
         /**
          * Returns the text a signature over the whole URL should cover.
          *
-         * <p>This is the complete unsigned URL: scheme, host, port, path, and every query parameter,
-         * including the parameters added with {@link #addParameter(String, Object)}. It equals
-         * {@link #getUrl()} and is named for what a signer does with it. A scheme that signs less
-         * signs {@link #getEncodedPathAndQuery()} or {@link #getEncodedPath()} instead.
+         * <p>This is the unsigned URL as the builder writes it: scheme, host, port, path, and every
+         * query parameter, including the parameters added with {@link #addParameter(String, Object)}.
+         * It equals {@link #getUrl()} and is named for what a signer does with it. A scheme that signs
+         * less signs {@link #getEncodedPathAndQuery()} or {@link #getEncodedPath()} instead.
+         *
+         * <p>A relative URL has less to sign. In protocol-relative mode the text starts with
+         * {@code //} and has no scheme. In hostname-relative mode it starts with the path, so the
+         * signature covers no scheme, host, or port and stays valid on any host.
          *
          * @return The text to sign (e.g., "https://example.com/path?key=value&amp;expires=1795127806")
          */
