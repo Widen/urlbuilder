@@ -344,7 +344,7 @@ new S3UrlBuilder("my-bucket", "private/file.txt")
     .expireIn(Duration.ofHours(1))
     .usingSsl()
     .toString()
-// https://my-bucket.s3.us-east-1.amazonaws.com/private/file.txt?Signature=...&AWSAccessKeyId=...&Expires=...
+// https://my-bucket.s3.us-east-1.amazonaws.com/private/file.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&...&X-Amz-Signature=...
 
 // Signed URL that downloads the object under another file name
 new S3UrlBuilder("my-bucket", "documents/report-2024-q1.pdf")
@@ -365,11 +365,17 @@ The details:
   origin, and keeps the slashes as given.
 * **Expiration:** `expireIn(Duration)` counts from the moment the URL is generated, and `expireAt(Instant)` sets a fixed
   time. The later call replaces the earlier one.
-* **Credentials:** a signed URL needs an expiration and `usingCredentials`, which also accepts an STS session token. The
-  builder signs with AWS Signature Version 2.
+* **Credentials:** a signed URL needs an expiration and `usingCredentials`, which also accepts an STS session token.
+* **Signature:** the builder signs with AWS Signature Version 4 (SigV4) by default. A signed URL needs the bucket's
+  region, from `inRegion` or `withEndpoint(endpoint, region)`; without one, `toString()` throws `IllegalStateException`.
+  The region must be the bucket's own, or S3 rejects the URL with a 400. A SigV4 URL lasts from 1 second to 7 days, and
+  `toString()` throws `IllegalArgumentException` for an expiration outside that range. `usingSignatureVersion2()` is a
+  deprecated opt-in to Signature Version 2 for buckets and S3-compatible services that still accept it; it needs no
+  region and accepts any expiration.
 * **Response headers:** `withAttachmentFilename` sets the `Content-Disposition` header that makes a browser download the
   file, and it requires a signed URL. `withContentType` sets the `Content-Type` header.
-* **Endpoint:** `inRegion("us-west-2")` selects a regional endpoint, and `withEndpoint` names any S3-compatible service.
+* **Endpoint:** `inRegion("us-west-2")` selects a regional endpoint, and `withEndpoint(endpoint, region)` names any
+  S3-compatible service and the region it signs for. `withEndpoint(endpoint)` clears the region.
 * **Bucket placement:** the bucket goes in the hostname by default. The table lists all three placements.
 
 | Method | Result |
