@@ -171,13 +171,64 @@ class S3UrlBuilderTest
             + "?response-content-disposition=attachment; filename=\"a.pdf\""
             + "&response-content-type=application/pdf";
 
+        assertEquals(hmacSha1(stringToSign, secretKey), signatureOf(builder.toString()));
+    }
+
+    @Test
+    void testSignsSessionToken() throws Exception
+    {
+        String secretKey = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY";
+
+        String url = new S3UrlBuilder("test-bucket", "test-key.txt")
+            .expireAt(Instant.ofEpochSecond(1522540800L))
+            .usingCredentials("AKIAIOSFODNN7EXAMPLE", secretKey, "session-token")
+            .toString();
+
+        String stringToSign = "GET\n\n\n1522540800\nx-amz-security-token:session-token\n/test-bucket/test-key.txt";
+
+        assertEquals(hmacSha1(stringToSign, secretKey), signatureOf(url));
+        assertEquals("session-token", extractParameter(url, "x-amz-security-token"));
+    }
+
+    @Test
+    void testPathStyleSignsSameResourceAsHostnameStyle() throws Exception
+    {
+        String secretKey = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY";
+        String expectedSignature = hmacSha1("GET\n\n\n1522540800\n/test-bucket/test-key.txt", secretKey);
+
+        String hostnameStyle = new S3UrlBuilder("test-bucket", "test-key.txt")
+            .expireAt(Instant.ofEpochSecond(1522540800L))
+            .usingCredentials("AKIAIOSFODNN7EXAMPLE", secretKey)
+            .toString();
+        String pathStyle = new S3UrlBuilder("test-bucket", "test-key.txt")
+            .usingBucketInPath()
+            .expireAt(Instant.ofEpochSecond(1522540800L))
+            .usingCredentials("AKIAIOSFODNN7EXAMPLE", secretKey)
+            .toString();
+
+        assertTrue(pathStyle.startsWith("http://s3.amazonaws.com/test-bucket/test-key.txt?"), pathStyle);
+        assertEquals(expectedSignature, signatureOf(hostnameStyle));
+        assertEquals(expectedSignature, signatureOf(pathStyle));
+    }
+
+    @Test
+    void testInvalidDnsBucketNameFallsBackToPathStyle()
+    {
+        String url = new S3UrlBuilder("My_Bucket", "a.txt").usingBucketVirtualHost().toString();
+
+        assertEquals("http://s3.amazonaws.com/My_Bucket/a.txt", url);
+    }
+
+    private static String hmacSha1(String stringToSign, String secretKey) throws Exception
+    {
         Mac mac = Mac.getInstance("HmacSHA1");
         mac.init(new SecretKeySpec(secretKey.getBytes(StandardCharsets.UTF_8), "HmacSHA1"));
-        String expectedSignature = Base64.getEncoder().encodeToString(mac.doFinal(stringToSign.getBytes(StandardCharsets.UTF_8)));
+        return Base64.getEncoder().encodeToString(mac.doFinal(stringToSign.getBytes(StandardCharsets.UTF_8)));
+    }
 
-        String signature = URLDecoder.decode(extractParameter(builder.toString(), "Signature"), "UTF-8");
-
-        assertEquals(expectedSignature, signature);
+    private static String signatureOf(String url) throws Exception
+    {
+        return URLDecoder.decode(extractParameter(url, "Signature"), "UTF-8");
     }
 
     @Test

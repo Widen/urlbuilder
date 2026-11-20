@@ -16,6 +16,7 @@ package com.widen.urlbuilder;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
@@ -125,5 +126,18 @@ class UrlBuilderParsingTest
 
         assertEquals(Arrays.asList("abc=="), builder.getQueryParameters().get("sig"));
         assertEquals(Arrays.asList("b=c"), builder.getQueryParameters().get("a"));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "http://my.host.com/a?,       http://my.host.com/a",
+        "http://my.host.com/a?&,      http://my.host.com/a",
+        "http://my.host.com/a?=v,     http://my.host.com/a",
+        "http://my.host.com/a?x=&=v,  http://my.host.com/a?x",
+        "http://my.host.com/a?x&&y=1, http://my.host.com/a?x&y=1"
+    })
+    void dropsEmptyAndNamelessParsedParameters(String spec, String expected)
+    {
+        assertEquals(expected, new UrlBuilder(spec).toString());
     }
 }
