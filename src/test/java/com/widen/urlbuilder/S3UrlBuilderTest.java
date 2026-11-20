@@ -2,6 +2,7 @@ package com.widen.urlbuilder;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
@@ -21,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class S3UrlBuilderTest
 {
-    private static final Date farFuture = new Date(1522540800000L);
+    private static final Instant farFuture = Instant.ofEpochSecond(1522540800L);
 
     private static final String awsAccount = "AKIAJKECYSQBZYJDUDSQ";
 
@@ -94,7 +95,7 @@ class S3UrlBuilderTest
     @Test
     void testExpireWithNoAccountsThrows()
     {
-        S3UrlBuilder builder = new S3UrlBuilder("bucket.test.com", "foo.txt").expireIn(1, TimeUnit.HOURS);
+        S3UrlBuilder builder = new S3UrlBuilder("bucket.test.com", "foo.txt").expireIn(Duration.ofHours(1));
 
         assertThrows(IllegalStateException.class, builder::toString);
     }
@@ -400,7 +401,7 @@ class S3UrlBuilderTest
             Instant fixedInstant = Instant.ofEpochSecond(1522540800L);
             
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
-                .expireIn(1, TimeUnit.HOURS)
+                .expireIn(Duration.ofHours(1))
                 .expireAt(fixedInstant)
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
             
@@ -416,7 +417,7 @@ class S3UrlBuilderTest
             Date fixedDate = new Date(1522540800000L);
             
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
-                .expireIn(1, TimeUnit.HOURS)
+                .expireIn(Duration.ofHours(1))
                 .expireAt(fixedDate)
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
             
@@ -433,15 +434,15 @@ class S3UrlBuilderTest
         @Test
         void testExpireInWithHours()
         {
-            long beforeTime = System.currentTimeMillis() / 1000;
+            long beforeTime = Instant.now().getEpochSecond();
             
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
-                .expireIn(1, TimeUnit.HOURS)
+                .expireIn(Duration.ofHours(1))
                 .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
             
             String url = builder.toString();
             
-            long afterTime = System.currentTimeMillis() / 1000;
+            long afterTime = Instant.now().getEpochSecond();
             
             String expiresParam = extractParameter(url, "Expires");
             long expiresValue = Long.parseLong(expiresParam);
@@ -454,9 +455,9 @@ class S3UrlBuilderTest
         }
 
         @Test
-        void testExpireInWithMinutes()
+        void testExpireInWithTimeUnit()
         {
-            long beforeTime = System.currentTimeMillis() / 1000;
+            long beforeTime = Instant.now().getEpochSecond();
             
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
                 .expireIn(30, TimeUnit.MINUTES)
@@ -464,7 +465,7 @@ class S3UrlBuilderTest
             
             String url = builder.toString();
             
-            long afterTime = System.currentTimeMillis() / 1000;
+            long afterTime = Instant.now().getEpochSecond();
             
             String expiresParam = extractParameter(url, "Expires");
             long expiresValue = Long.parseLong(expiresParam);
@@ -477,11 +478,29 @@ class S3UrlBuilderTest
         }
 
         @Test
+        void testExpireInWithTimeUnitKeepsDurationsLongerThanLongNanoseconds()
+        {
+            long fourHundredYears = Duration.ofDays(400L * 365).getSeconds();
+            long beforeTime = Instant.now().getEpochSecond();
+
+            String url = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .expireIn(400L * 365, TimeUnit.DAYS)
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
+                .toString();
+
+            long afterTime = Instant.now().getEpochSecond();
+            long expiresValue = Long.parseLong(extractParameter(url, "Expires"));
+
+            assertTrue(expiresValue >= beforeTime + fourHundredYears && expiresValue <= afterTime + fourHundredYears,
+                "Expires should be approximately 400 years from now");
+        }
+
+        @Test
         void testExpireInReturnsBuilderForChaining()
         {
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt");
             
-            S3UrlBuilder result = builder.expireIn(1, TimeUnit.HOURS);
+            S3UrlBuilder result = builder.expireIn(Duration.ofHours(1));
             
             assertEquals(builder, result, "expireIn should return the same builder instance for chaining");
         }
@@ -491,6 +510,8 @@ class S3UrlBuilderTest
         {
             S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt");
 
+            assertThrows(IllegalArgumentException.class, () -> builder.expireIn(Duration.ZERO));
+            assertThrows(IllegalArgumentException.class, () -> builder.expireIn(Duration.ofHours(-1)));
             assertThrows(IllegalArgumentException.class, () -> builder.expireIn(0, TimeUnit.HOURS));
             assertThrows(IllegalArgumentException.class, () -> builder.expireIn(-1, TimeUnit.HOURS));
         }

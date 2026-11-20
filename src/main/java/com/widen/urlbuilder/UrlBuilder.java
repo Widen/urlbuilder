@@ -266,7 +266,7 @@ public class UrlBuilder {
      * @return the formatted query string (without the leading {@code ?})
      */
     public String getQueryParameterString() {
-        return buildParams(queryParams);
+        return buildParams(queryParams, queryEncoder);
     }
 
     /**
@@ -290,6 +290,9 @@ public class UrlBuilder {
      * Call this method if you need to maintain URL compatibility with v2.x output,
      * for example if you have signed URLs or caches keyed by URL strings. This sets
      * both the path encoder and query encoder to use the legacy v2.x behavior.
+     * It applies to the whole URL whenever it is called, including path segments and
+     * parameters added earlier or parsed from a URL. The exception is a parameter added
+     * with its own encoder through {@link #addParameter(String, Object, Encoder)}.
      * <p>
      * Example:
      * <pre>
@@ -332,6 +335,9 @@ public class UrlBuilder {
      * Set a custom encoder for query parameters.
      * <p>
      * By default, {@link QueryParameterEncoder} is used for RFC 3986 compliant encoding.
+     * The encoder applies to every parameter when the URL is written, including parameters
+     * added before this call. The exception is a parameter added with its own encoder
+     * through {@link #addParameter(String, Object, Encoder)}.
      *
      * @param encoder the encoder to use for query parameters
      * @return this builder for method chaining
@@ -511,9 +517,7 @@ public class UrlBuilder {
      * @return this builder for method chaining
      */
     public UrlBuilder addParameter(String key, Object value) {
-        if (StringUtilsInternal.isNotBlank(key)) {
-            queryParams.add(new QueryParam(key, value != null ? value.toString() : null, queryEncoder));
-        }
+        addQueryParam(queryParams, key, value, null);
         return this;
     }
 
@@ -522,14 +526,23 @@ public class UrlBuilder {
      *
      * @param key text for the query parameter key
      * @param value toString() result will be added as the value
-     * @param encoder encoder to use for this parameter's key and value
+     * @param encoder encoder to use for this parameter's key and value, whatever query encoder the builder uses
      * @return this builder for method chaining
      */
     public UrlBuilder addParameter(String key, Object value, Encoder encoder) {
-        if (StringUtilsInternal.isNotBlank(key)) {
-            queryParams.add(new QueryParam(key, value != null ? value.toString() : null, encoder));
-        }
+        addQueryParam(queryParams, key, value, encoder);
         return this;
+    }
+
+    /**
+     * Appends a parameter to {@code params}, unless the key is blank. A null value adds the key alone.
+     *
+     * @param encoder the encoder for this parameter alone, or null to use the builder's query encoder
+     */
+    static void addQueryParam(List<QueryParam> params, String key, Object value, Encoder encoder) {
+        if (StringUtilsInternal.isNotBlank(key)) {
+            params.add(new QueryParam(key, value != null ? value.toString() : null, encoder));
+        }
     }
 
     /**
@@ -684,12 +697,13 @@ public class UrlBuilder {
         String encodedPath = buildPath();
         url.append(encodedPath);
 
-        String query = buildParams(queryParams);
+        String query = buildParams(queryParams, queryEncoder);
 
         if (urlSigner != null) {
             String unsignedUrl = query.isEmpty() ? url.toString() : url + "?" + query;
-            Map<String, String> signatureParams = urlSigner.sign(buildSigningContext(unsignedUrl, encodedPath, query));
-            query = buildParams(withSignatureParams(signatureParams));
+            SigningContextImpl context = buildSigningContext(unsignedUrl, encodedPath, query);
+            Map<String, ?> signatureParams = urlSigner.sign(context);
+            query = buildParams(withSignatureParams(context.getAddedParameters(), signatureParams), queryEncoder);
         }
 
         if (!query.isEmpty()) {
@@ -716,7 +730,7 @@ public class UrlBuilder {
         return trailingPathSlash ? encodedPath + "/" : encodedPath;
     }
 
-    private String buildParams(List<QueryParam> params) {
+    static String buildParams(List<QueryParam> params, Encoder defaultEncoder) {
         StringBuilder query = new StringBuilder();
 
         boolean first = true;
@@ -726,7 +740,7 @@ public class UrlBuilder {
                 query.append("&");
             }
 
-            query.append(qp.toString());
+            query.append(qp.encode(defaultEncoder));
 
             first = false;
         }
@@ -735,16 +749,18 @@ public class UrlBuilder {
     }
 
     /**
-     * Returns the query parameters followed by the signer's parameters. The signer's parameters are not added to
-     * {@link #queryParams}, so the next call to toString() signs the same unsigned URL.
+     * Returns the query parameters, followed by the parameters the signer added to the signing context, followed by
+     * the parameters the signer returned. The signer's parameters are not added to {@link #queryParams}, so the next
+     * call to toString() signs the same unsigned URL.
      */
-    private List<QueryParam> withSignatureParams(Map<String, String> signatureParams) {
+    private List<QueryParam> withSignatureParams(List<QueryParam> signedParams, Map<String, ?> signatureParams) {
         List<QueryParam> params = new ArrayList<>(queryParams);
+        params.addAll(signedParams);
 
         if (signatureParams != null) {
-            for (Entry<String, String> entry : signatureParams.entrySet()) {
+            for (Entry<String, ?> entry : signatureParams.entrySet()) {
                 if (StringUtilsInternal.isNotBlank(entry.getKey()) && entry.getValue() != null) {
-                    params.add(new QueryParam(entry.getKey(), entry.getValue(), queryEncoder));
+                    params.add(new QueryParam(entry.getKey(), entry.getValue().toString(), queryEncoder));
                 }
             }
         }
@@ -752,7 +768,7 @@ public class UrlBuilder {
         return params;
     }
 
-    private UrlSigner.SigningContext buildSigningContext(String unsignedUrl, String encodedPath, String encodedQuery) {
+    private SigningContextImpl buildSigningContext(String unsignedUrl, String encodedPath, String encodedQuery) {
         String protocol = "";
         if (GenerationMode.FULLY_QUALIFIED.equals(mode)) {
             protocol = ssl ? "https" : "http";
@@ -773,7 +789,8 @@ public class UrlBuilder {
             fragment,
             unsignedUrl,
             ssl,
-            mode
+            mode,
+            queryEncoder
         );
     }
 
@@ -813,7 +830,7 @@ public class UrlBuilder {
         String key;
         /** The parameter value (unencoded). */
         String value;
-        /** The encoder used to encode this parameter. */
+        /** The encoder given for this parameter alone, or null to use the builder's query encoder. */
         Encoder encoder;
 
         /**
@@ -821,7 +838,7 @@ public class UrlBuilder {
          *
          * @param key the parameter key
          * @param value the parameter value
-         * @param encoder the encoder to use for encoding
+         * @param encoder the encoder for this parameter alone, or null to use the builder's query encoder
          */
         QueryParam(String key, String value, Encoder encoder) {
             this.key = key;
@@ -829,12 +846,17 @@ public class UrlBuilder {
             this.encoder = encoder;
         }
 
-        @Override
-        public String toString() {
+        /**
+         * @param defaultEncoder the builder's query encoder at the time the URL is written
+         * @return the encoded key, followed by "=" and the encoded value unless the value is blank
+         */
+        String encode(Encoder defaultEncoder) {
+            Encoder effectiveEncoder = encoder != null ? encoder : defaultEncoder;
+
             StringBuilder sb = new StringBuilder();
-            sb.append(encoder.encode(key));
+            sb.append(effectiveEncoder.encode(key));
             if (StringUtilsInternal.isNotBlank(value)) {
-                sb.append("=").append(encoder.encode(value));
+                sb.append("=").append(effectiveEncoder.encode(value));
             }
             return sb.toString();
         }

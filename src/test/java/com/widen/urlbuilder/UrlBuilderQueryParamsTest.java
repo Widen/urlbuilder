@@ -172,4 +172,40 @@ class UrlBuilderQueryParamsTest
         // Query: @ not encoded (PathSegmentEncoder allows it)
         assertEquals("http://my.host.com/path@test?email=user@test", url);
     }
+
+    @Test
+    void queryEncoderAppliesToParametersAddedBeforeItWasSet()
+    {
+        String legacy = new UrlBuilder("my.host.com", "/path")
+            .addParameter("q", "x y*z~")
+            .usingLegacyEncoding()
+            .toString();
+        assertEquals("http://my.host.com/path?q=x%20y*z%7E", legacy);
+
+        String custom = new UrlBuilder("my.host.com", "/path")
+            .addParameter("ref", "user@host:8080")
+            .usingQueryEncoder(new PathSegmentEncoder())
+            .toString();
+        assertEquals("http://my.host.com/path?ref=user@host:8080", custom);
+    }
+
+    @Test
+    void legacyEncodingAppliesToParametersParsedFromAUrl()
+    {
+        String legacyUrl = "http://my.host.com/a%20b%2Bc%40d?q=x%20y*z%7E";
+
+        assertEquals(legacyUrl, new UrlBuilder(legacyUrl).usingLegacyEncoding().toString());
+    }
+
+    @Test
+    void parameterAddedWithItsOwnEncoderKeepsIt()
+    {
+        String url = new UrlBuilder("my.host.com", "/path")
+            .addParameter("next", "%2Fhome", NoEncodingEncoder.INSTANCE)
+            .addParameter("q", "a b")
+            .usingLegacyEncoding()
+            .toString();
+
+        assertEquals("http://my.host.com/path?next=%2Fhome&q=a%20b", url);
+    }
 }

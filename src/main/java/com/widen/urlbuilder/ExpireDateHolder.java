@@ -1,5 +1,6 @@
 package com.widen.urlbuilder;
 
+import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
 
@@ -9,23 +10,30 @@ import java.util.concurrent.TimeUnit;
  */
 class ExpireDateHolder
 {
-    private long duration;
-
-    private TimeUnit unit;
+    private Duration duration;
 
     private Instant instant;
 
-    void expireIn(long duration, TimeUnit unit)
+    void expireIn(Duration duration)
     {
-        if (duration <= 0)
+        InternalUtils.checkNotNull(duration, "duration");
+        if (duration.isZero() || duration.isNegative())
         {
             throw new IllegalArgumentException("duration must be positive");
         }
-        InternalUtils.checkNotNull(unit, "unit");
 
         this.duration = duration;
-        this.unit = unit;
         this.instant = null;
+    }
+
+    void expireIn(long duration, TimeUnit unit)
+    {
+        InternalUtils.checkNotNull(unit, "unit");
+
+        // Converted through whole seconds: TimeUnit.toNanos stops at Long.MAX_VALUE nanoseconds, about 292 years.
+        long seconds = unit.toSeconds(duration);
+        long remainder = duration - unit.convert(seconds, TimeUnit.SECONDS);
+        expireIn(Duration.ofSeconds(seconds, unit.toNanos(remainder)));
     }
 
     void expireAt(Instant instant)
@@ -33,12 +41,12 @@ class ExpireDateHolder
         InternalUtils.checkNotNull(instant, "instant");
 
         this.instant = instant;
-        this.unit = null;
+        this.duration = null;
     }
 
     boolean isSet()
     {
-        return instant != null || unit != null;
+        return instant != null || duration != null;
     }
 
     /**
@@ -51,11 +59,11 @@ class ExpireDateHolder
             return instant;
         }
 
-        if (unit == null)
+        if (duration == null)
         {
             return null;
         }
 
-        return Instant.ofEpochMilli(unit.toMillis(duration) + System.currentTimeMillis());
+        return Instant.now().plus(duration);
     }
 }
