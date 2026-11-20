@@ -212,6 +212,59 @@ class S3UrlBuilderTest
     }
 
     @Test
+    void testKeyWithPercentEscapeIsLiteralText()
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "a%20b.txt");
+
+        assertEquals("a%20b.txt", builder.getKey());
+        assertEquals("http://bucketuno.s3.amazonaws.com/a%2520b.txt", builder.toString());
+    }
+
+    @Test
+    void testEncodesKeyAsAwsSdksDo()
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "a+b @c:d(1)~-_.txt");
+
+        assertEquals("http://bucketuno.s3.amazonaws.com/a%2Bb%20%40c%3Ad%281%29~-_.txt", builder.toString());
+    }
+
+    @Test
+    void testKeepsTrailingSlashAndEmptySegmentsInKey()
+    {
+        S3UrlBuilder folder = new S3UrlBuilder("bucketuno", "/folder/");
+        S3UrlBuilder doubleSlash = new S3UrlBuilder("bucketuno", "a//b");
+
+        assertEquals("folder/", folder.getKey());
+        assertEquals("http://bucketuno.s3.amazonaws.com/folder/", folder.toString());
+        assertEquals("a//b", doubleSlash.getKey());
+        assertEquals("http://bucketuno.s3.amazonaws.com/a/%2Fb", doubleSlash.toString());
+        assertEquals("http://s3.amazonaws.com/bucketuno/a/%2Fb", doubleSlash.usingBucketInPath().toString());
+        assertEquals("http://bucketuno.s3.amazonaws.com/a/%2F%2Fb/%2F", new S3UrlBuilder("bucketuno", "a///b//").toString());
+    }
+
+    @Test
+    void testSignsKeyAsEncodedInUrl() throws Exception
+    {
+        String secretKey = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY";
+        String expectedSignature = hmacSha1("GET\n\n\n1522540800\n/test-bucket/docs/a%2Bb%20%C3%A9.txt", secretKey);
+
+        String hostnameStyle = new S3UrlBuilder("test-bucket", "docs/a+b é.txt")
+            .expireAt(Instant.ofEpochSecond(1522540800L))
+            .usingCredentials("AKIAIOSFODNN7EXAMPLE", secretKey)
+            .toString();
+        String pathStyle = new S3UrlBuilder("test-bucket", "docs/a+b é.txt")
+            .usingBucketInPath()
+            .expireAt(Instant.ofEpochSecond(1522540800L))
+            .usingCredentials("AKIAIOSFODNN7EXAMPLE", secretKey)
+            .toString();
+
+        assertTrue(hostnameStyle.startsWith("http://test-bucket.s3.amazonaws.com/docs/a%2Bb%20%C3%A9.txt?"), hostnameStyle);
+        assertTrue(pathStyle.startsWith("http://s3.amazonaws.com/test-bucket/docs/a%2Bb%20%C3%A9.txt?"), pathStyle);
+        assertEquals(expectedSignature, signatureOf(hostnameStyle));
+        assertEquals(expectedSignature, signatureOf(pathStyle));
+    }
+
+    @Test
     void testInvalidDnsBucketNameFallsBackToPathStyle()
     {
         String url = new S3UrlBuilder("My_Bucket", "a.txt").usingBucketVirtualHost().toString();

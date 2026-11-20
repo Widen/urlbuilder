@@ -357,6 +357,11 @@ new S3UrlBuilder("my-bucket", "documents/report-2024-q1.pdf")
 
 The details:
 
+* **Key:** the builder takes the key as literal text and encodes every character except letters, digits, `-._~`, and
+  `/`, as the AWS SDKs do. So `a%20b.txt` names that object and not `a b.txt`, and S3 does not read the `+` in
+  `a+b.txt` as a space. The builder drops leading slashes and keeps every other slash, because `folder/` and `a//b` are
+  keys of their own. After the first slash of a run it writes `%2F`, as the AWS SDKs do, so `a//b` becomes `a/%2Fb`
+  and no HTTP client or proxy can merge the slashes. `CloudfrontUrlBuilder` keeps the slashes of its key as given.
 * **Expiration:** `expireIn(Duration)` counts from the moment the URL is generated, and `expireAt(Instant)` sets a fixed
   time. The later call replaces the earlier one.
 * **Credentials:** a signed URL needs an expiration and `usingCredentials`, which also accepts an STS session token. The

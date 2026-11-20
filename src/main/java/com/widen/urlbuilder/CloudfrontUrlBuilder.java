@@ -122,7 +122,10 @@ public class CloudfrontUrlBuilder
 
     /**
      * Sets the resource key (path) within the CloudFront distribution.
-     * 
+     *
+     * <p>Leading slashes are dropped, and every other slash is kept, so {@code folder/} and
+     * {@code a//b} reach the origin as given.
+     *
      * @param key The path to the resource (e.g., "/videos/movie.mp4")
      * @return This builder for method chaining
      */
@@ -290,7 +293,7 @@ public class CloudfrontUrlBuilder
         UrlBuilder builder = new UrlBuilder();
 
         builder.withHostname(distributionHostname);
-        builder.withPath(key);
+        builder.withExactPathSegments(UrlBuilder.objectKeySegments(key));
         builder.usingSsl(ssl);
         builder.addParameters(parameters);
         builder.modeFullyQualified();

@@ -48,14 +48,18 @@ CloudFront builders. Some URLs differ from the ones version 2 produced, so read 
    It has two limits:
 
    - A parameter added with its own encoder, through `addParameter(key, value, encoder)`, keeps that encoder.
-   - `S3UrlBuilder` and `CloudfrontUrlBuilder` always use the 3.0 encoding.
+   - `S3UrlBuilder` and `CloudfrontUrlBuilder` always use the 3.0 encoding. An S3 key encodes every character except
+     letters, digits, `-._~`, and `/`, as the AWS SDKs do, so it differs from 2.x only in writing `*` as `%2A` and
+     keeping `~`.
 2. **Replace `usingEncoder(Encoder)`.** Call `usingPathEncoder(Encoder)`, `usingQueryEncoder(Encoder)`, or both.
    `LegacyEncoder` replaces `BuiltinEncoder`. Check code that calls it after adding parameters: `usingEncoder` encoded
    only the parameters added after the call, and `usingQueryEncoder` encodes every parameter, including the ones added
    before it. To encode one parameter differently, pass its encoder to `addParameter(key, value, encoder)`.
-3. **Expect unencoded text from `getPath()` and `getPathSegments()`.** They returned percent-encoded text in 2.x.
+3. **Expect unencoded text from `getPath()`, `getPathSegments()`, and `S3UrlBuilder.getKey()`.** They returned
+   percent-encoded text in 2.x. `getKey()` now returns the key as given, without leading slashes.
 4. **Check code that parses a URL and writes it back.** `new UrlBuilder(String)` now decodes the path, so `/a%20b` stays
-   `/a%20b`. In 2.x it became `/a%2520b`.
+   `/a%20b`. In 2.x it became `/a%2520b`. A trailing slash now stays as well, so `/foo/` no longer becomes `/foo`.
+   Check S3 keys that end with a slash or contain `//` too: `S3UrlBuilder` now keeps those slashes.
 5. **Check code that adds a parameter whose value is only whitespace.** `addParameter("q", " ")` now writes `q=%20`. In
    2.x it wrote `q` alone, as a null or empty value still does.
 6. **Check code that calls both `expireIn` and `expireAt`.** The later call now wins. In 2.x `expireAt` always won.
@@ -87,7 +91,8 @@ CloudFront builders. Some URLs differ from the ones version 2 produced, so read 
 ### Changed
 
 - Path segments and query parameters are encoded by RFC 3986, with separate rules for each.
-- The builder encodes the path when it writes the URL, so `getPath()` and `getPathSegments()` return unencoded text.
+- The builder encodes the path when it writes the URL, so `getPath()` and `getPathSegments()` return unencoded text,
+  and `S3UrlBuilder.getKey()` returns the key as given.
 - `new UrlBuilder(String)` decodes the path of the URL it parses.
 - A parameter value of only whitespace is written, as in `q=%20`. A null or empty value still writes the name alone.
 - Port 80 turns HTTPS off, as port 443 turns it on, and `new UrlBuilder(hostname, path)` sets no port.
@@ -119,6 +124,9 @@ CloudFront builders. Some URLs differ from the ones version 2 produced, so read 
 - `new UrlBuilder(String)` mishandled a query value that contains `=`. It removed trailing `=` characters, so
   `?sig=abc==` parsed as `abc`, and it dropped the whole parameter for a value such as `?a=b=c`.
 - `new UrlBuilder(String)` encoded an already encoded path a second time.
+- `new UrlBuilder(String)` dropped the trailing slash of a path, so `/foo/` became `/foo`.
+- `S3UrlBuilder` and `CloudfrontUrlBuilder` dropped a trailing slash and empty segments from a key, so `folder/` and
+  `a//b` named the objects `folder` and `a/b`.
 - `UrlBuilder` left port 80 out of an `https` URL and port 443 out of an `http` URL, so the URL named the wrong port.
   `SigningContext.getPort()` returned null for those ports as well.
 
