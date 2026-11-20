@@ -69,6 +69,16 @@ class UrlBuilderQueryParamsTest
     }
 
     @Test
+    void whitespaceValueIsWritten()
+    {
+        String added = new UrlBuilder("my.host.com", "/foo.jpg").addParameter("key0", " ").addParameter("key1", "\t").toString();
+        assertEquals("http://my.host.com/foo.jpg?key0=%20&key1=%09", added);
+
+        String parsed = new UrlBuilder("http://my.host.com/foo.jpg?key0=%20").toString();
+        assertEquals("http://my.host.com/foo.jpg?key0=%20", parsed);
+    }
+
+    @Test
     void encodesPlusSign()
     {
         String url = new UrlBuilder("my.host.com", "foo/bar/baz.html").addParameter("thekey", "+plus").toString();
