@@ -2,6 +2,7 @@ package com.widen.urlbuilder;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.concurrent.TimeUnit;
 
 /**
  * The expiry of a signed URL: either a duration measured from the moment the URL is generated, or a fixed instant.
@@ -23,6 +24,16 @@ class ExpireDateHolder
 
         this.duration = duration;
         this.instant = null;
+    }
+
+    void expireIn(long duration, TimeUnit unit)
+    {
+        InternalUtils.checkNotNull(unit, "unit");
+
+        // Converted through whole seconds: TimeUnit.toNanos stops at Long.MAX_VALUE nanoseconds, about 292 years.
+        long seconds = unit.toSeconds(duration);
+        long remainder = duration - unit.convert(seconds, TimeUnit.SECONDS);
+        expireIn(Duration.ofSeconds(seconds, unit.toNanos(remainder)));
     }
 
     void expireAt(Instant instant)

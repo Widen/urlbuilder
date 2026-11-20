@@ -166,8 +166,8 @@ public class S3UrlBuilder
      */
     public S3UrlBuilder expireIn(long duration, TimeUnit unit)
     {
-        InternalUtils.checkNotNull(unit, "unit");
-        return expireIn(Duration.ofNanos(unit.toNanos(duration)));
+        expireDate.expireIn(duration, unit);
+        return this;
     }
 
     /**
