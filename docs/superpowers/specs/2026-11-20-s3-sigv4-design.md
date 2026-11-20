@@ -6,8 +6,9 @@
 ## Intent
 
 AWS is turning off Signature Version 2 (SigV2) for S3. Regions launched after January 30, 2014 accept only Signature
-Version 4 (SigV4). In the eight older regions, buckets created after June 24, 2020 reject SigV2, and an account can
-deny SigV2 anywhere with the `s3:signatureversion` IAM condition key. AWS recommends moving every application to SigV4
+Version 4 (SigV4). Eight regions launched before 2014 still accept SigV2 for every bucket, whatever its creation date,
+and an account can deny SigV2 anywhere with the `s3:signatureversion` IAM condition key. AWS recommends moving every
+application to SigV4
 ([AWS blog, updated August 4, 2026](https://aws.amazon.com/blogs/aws/amazon-s3-update-sigv2-deprecation-period-extended-modified/)).
 
 `S3UrlBuilder` signs presigned GET URLs with SigV2 only. Its main consumer, `Widen/dam`
