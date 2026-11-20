@@ -208,9 +208,28 @@ new UrlBuilder("my.host.com", "secure/path").usingSsl().toString()
 
 new UrlBuilder("localhost", 8080, "api/health").toString()
 // http://localhost:8080/api/health
+
+new UrlBuilder("https://localhost:8443/app").toString()
+// https://localhost:8443/app
 ```
 
-The builder leaves ports 80 and 443 out of the URL, and port 443 turns HTTPS on.
+The builder leaves the default port of the scheme out of the URL: 80 for `http` and 443 for `https`. Port 443 turns
+HTTPS on and port 80 turns it off, so the port wins when it conflicts with the scheme.
+
+```java
+new UrlBuilder("https://localhost:80/app").toString()
+// http://localhost/app
+
+new UrlBuilder("http://localhost:443/app").toString()
+// https://localhost/app
+```
+
+A later `usingSsl(boolean)` call changes the scheme and keeps the port.
+
+```java
+new UrlBuilder("localhost", 80, "app").usingSsl().toString()
+// https://localhost:80/app
+```
 
 ### Fragments
 
@@ -569,7 +588,8 @@ The `SigningContext` describes the URL before signing:
   the resource in a CloudFront policy.
 * `getProtocol()` returns `http` or `https`, or an empty string for a relative URL.
 * `getHostname()` returns the host.
-* `getPort()` returns the port, or `null` when the port is unset, 80, or 443.
+* `getPort()` returns the port, or `null` when the port is unset or is the default for the scheme: 80 for `http` and 443
+  for `https`.
 * `getEncodedPath()` returns the encoded path.
 * `getEncodedQuery()` returns the encoded query string.
 * `getEncodedPathAndQuery()` returns the encoded path and query string together, without the scheme or host.
