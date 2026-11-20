@@ -50,6 +50,18 @@ class CloudfrontUrlBuilderTest
     }
 
     @Test
+    void addParameterReplacesRepeatedName()
+    {
+        String url = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
+            .addParameter("a", "1")
+            .addParameter("a", "2")
+            .expireAt(Instant.ofEpochSecond(1381356586L))
+            .toString();
+
+        assertTrue(url.startsWith("http://dnnfhn216qiqy.cloudfront.net/test.jpeg?a=2&Expires="), url);
+    }
+
+    @Test
     void testNonAsciiCharsInAttachment()
     {
         CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/0/b/c/d/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem).withAttachmentFilename("+ƒoo.jpg").expireAt(Instant.ofEpochSecond(1381356586L));

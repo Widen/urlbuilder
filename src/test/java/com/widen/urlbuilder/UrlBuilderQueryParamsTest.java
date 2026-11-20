@@ -218,4 +218,28 @@ class UrlBuilderQueryParamsTest
 
         assertEquals("http://my.host.com/path?next=%2Fhome&q=a%20b", url);
     }
+
+    @Test
+    void writesQueryParameterStringWithoutQuestionMark()
+    {
+        UrlBuilder builder = new UrlBuilder("my.host.com", "/path")
+            .addParameter("q", "a b")
+            .addParameter("flag", null)
+            .addParameter("q", "c&d");
+
+        assertEquals("q=a%20b&flag&q=c%26d", builder.getQueryParameterString());
+    }
+
+    @Test
+    void clearsAllParameters()
+    {
+        String url = new UrlBuilder("my.host.com", "/path")
+            .addParameter("a", "1")
+            .addParameter("b", "2")
+            .clearParameters()
+            .addParameter("c", "3")
+            .toString();
+
+        assertEquals("http://my.host.com/path?c=3", url);
+    }
 }
