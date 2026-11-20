@@ -16,7 +16,6 @@ package com.widen.urlbuilder;
 import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.MessageDigest;
-import java.security.SignatureException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -328,7 +327,7 @@ public class S3UrlBuilder
      * throws {@link IllegalStateException} from {@link #toString()} until a region is given. Use
      * {@link #withEndpoint(String, String)} to sign for this endpoint.
      *
-     * @param endpoint fully-quantified DNS hostname of S3 service
+     * @param endpoint fully qualified DNS hostname of S3 service
      * @return This builder for method chaining
      */
     public S3UrlBuilder withEndpoint(String endpoint)
@@ -344,7 +343,7 @@ public class S3UrlBuilder
      * <p>Use this for an S3 API compatible service or a custom endpoint. The region must be the one the service
      * expects, or the service rejects the signature with a 400.
      *
-     * @param endpoint fully-quantified DNS hostname of S3 service, with {@code :PORT} for a non-default port
+     * @param endpoint fully qualified DNS hostname of S3 service, with {@code :PORT} for a non-default port
      * @param region the signing region (e.g., "us-east-1")
      * @return This builder for method chaining
      * @throws IllegalArgumentException if region is null or blank
@@ -493,9 +492,6 @@ public class S3UrlBuilder
             canonicalResource = "/" + bucket + builder.withExactPathSegments(keySegments).buildPath();
         }
 
-        // AWS signature V4 signs the path of the request alone, without the bucket the hostname names
-        String requestPath = builder.buildPath();
-
         try
         {
             if (StringUtilsInternal.isNotBlank(attachmentFilename))
@@ -518,7 +514,7 @@ public class S3UrlBuilder
                 InternalUtils.checkNotNull(expireInstant, "expire instant");
                 Map<String, String> params = signatureVersion2
                     ? signParams(expireInstant, canonicalResource, builder)
-                    : signV4Params(signingTime, expireInstant, requestPath, builder);
+                    : signV4Params(signingTime, expireInstant, builder);
                 builder.addParameters(params);
             }
 
@@ -751,16 +747,15 @@ public class S3UrlBuilder
      *
      * @param signingTime the moment the URL is signed, written as {@code X-Amz-Date}
      * @param expireTime the expiration, from which {@code X-Amz-Expires} counts whole seconds after signingTime
-     * @param requestPath the encoded path as the URL writes it
-     * @param builder the URL builder whose hostname and query parameters the signature covers
+     * @param builder the URL builder whose hostname, path, and query parameters the signature covers
      * @throws IllegalStateException if no region is set
      * @throws IllegalArgumentException if the URL expires less than 1 second or more than 7 days after signingTime
      * @see <a href="https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html">Authenticating
      * Requests: Using Query Parameters (AWS Signature Version 4)</a>
      */
-    private Map<String, String> signV4Params(Instant signingTime, Instant expireTime, String requestPath, UrlBuilder builder)
+    private Map<String, String> signV4Params(Instant signingTime, Instant expireTime, UrlBuilder builder)
     {
-        if (region == null)
+        if (StringUtilsInternal.isBlank(region))
         {
             throw new IllegalStateException("A region must be set to sign with Signature Version 4: "
                 + "call inRegion(region) or withEndpoint(endpoint, region).");
@@ -789,12 +784,12 @@ public class S3UrlBuilder
         params.put("X-Amz-SignedHeaders", "host");
 
         // S3 decodes the path before it signs it, so the %2F that keeps a run of slashes apart signs as a slash
-        String canonicalUri = requestPath.replace("%2F", "/");
+        String canonicalUri = builder.buildPath().replace("%2F", "/");
 
         String canonicalRequest = "GET\n"
             + canonicalUri + "\n"
             + canonicalQueryString(builder.queryParams, params) + "\n"
-            + "host:" + builder.getHostname() + "\n"
+            + "host:" + canonicalHost(builder) + "\n"
             + "\n"
             + "host\n"
             + "UNSIGNED-PAYLOAD";
@@ -804,12 +799,12 @@ public class S3UrlBuilder
             + scope + "\n"
             + hex(sha256(canonicalRequest));
 
-        byte[] signingKey = hmacSha256(("AWS4" + awsPrivateKey).getBytes(StandardCharsets.UTF_8), date);
-        signingKey = hmacSha256(signingKey, region);
-        signingKey = hmacSha256(signingKey, "s3");
-        signingKey = hmacSha256(signingKey, "aws4_request");
+        byte[] signingKey = hmac("HmacSHA256", ("AWS4" + awsPrivateKey).getBytes(StandardCharsets.UTF_8), date);
+        signingKey = hmac("HmacSHA256", signingKey, region);
+        signingKey = hmac("HmacSHA256", signingKey, "s3");
+        signingKey = hmac("HmacSHA256", signingKey, "aws4_request");
 
-        params.put("X-Amz-Signature", hex(hmacSha256(signingKey, stringToSign)));
+        params.put("X-Amz-Signature", hex(hmac("HmacSHA256", signingKey, stringToSign)));
 
         return params;
     }
@@ -842,12 +837,22 @@ public class S3UrlBuilder
         return query.toString();
     }
 
-    private static byte[] hmacSha256(byte[] key, String data)
+    /**
+     * HTTP clients send the host in lower case and leave the default port of the scheme out of the Host header.
+     */
+    private static String canonicalHost(UrlBuilder builder)
+    {
+        String host = builder.getHostname().toLowerCase(Locale.ROOT);
+        String defaultPort = builder.isSslEnabled() ? ":443" : ":80";
+        return host.endsWith(defaultPort) ? host.substring(0, host.length() - defaultPort.length()) : host;
+    }
+
+    private static byte[] hmac(String algorithm, byte[] key, String data)
     {
         try
         {
-            Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(key, "HmacSHA256"));
+            Mac mac = Mac.getInstance(algorithm);
+            mac.init(new SecretKeySpec(key, algorithm));
             return mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
         }
         catch (GeneralSecurityException e)
@@ -1009,16 +1014,7 @@ public class S3UrlBuilder
          */
         private static String sign(String data, String key)
         {
-            try
-            {
-                Mac mac = Mac.getInstance("HmacSHA1");
-                mac.init(new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA1"));
-                return Base64.getEncoder().encodeToString(mac.doFinal(data.getBytes(StandardCharsets.UTF_8)));
-            }
-            catch (Exception e)
-            {
-                throw new RuntimeException(new SignatureException("Failed to generate signature: " + e.getMessage(), e));
-            }
+            return Base64.getEncoder().encodeToString(hmac("HmacSHA1", key.getBytes(StandardCharsets.UTF_8), data));
         }
 
     }
