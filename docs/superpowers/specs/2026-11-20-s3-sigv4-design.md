@@ -46,9 +46,9 @@ any bucket that rejects SigV2. Version 3.0 makes SigV4 the default signature so 
 - Java 8 source and target; the build also runs the tests on Java 21 (`testOnJava21`).
 - SigV4 presigned URLs are valid for at most 7 days (604,800 seconds).
 - The signing region must match the bucket's region exactly.
-- The canonical request signs the path exactly as the URL sends it. Layer 9 made `S3UrlBuilder` encode keys as the AWS
-  SDKs do (everything but `A-Z a-z 0-9 - . _ ~ /`, with `%2F` after the first slash of a run), so the canonical URI is
-  the encoded path the builder already writes.
+- The canonical request signs the path as S3 decodes it. Layer 9 made `S3UrlBuilder` encode keys as the AWS SDKs do
+  (everything but `A-Z a-z 0-9 - . _ ~ /`, with `%2F` after the first slash of a run), so the canonical URI is the
+  encoded path the builder writes, with each `%2F` signed as `/`, as the AWS SDK for Java v1 signs it.
 
 ## Approaches
 
@@ -106,7 +106,7 @@ https://my-bucket.s3.us-west-2.amazonaws.com/docs/a%20b.txt
   - `X-Amz-Signature` is the hex HMAC-SHA256 signature.
 - Canonical request, lines joined with `\n`:
   1. `GET`
-  2. The encoded path exactly as the URL writes it.
+  2. The encoded path as the URL writes it, with each `%2F` written as `/`.
   3. The canonical query string: every query parameter except `X-Amz-Signature`, including
      `response-content-disposition` and `response-content-type`, each name and value encoded with the unreserved set
      (`A-Z a-z 0-9 - . _ ~`), sorted by encoded name.
