@@ -45,5 +45,9 @@ class HttpUtilsTest
             "attachment; filename=\"resume.pdf\"; filename*=UTF-8''r%C3%A9sum%C3%A9.pdf",
             HttpUtils.createContentDispositionHeader("attachment", "résumé.pdf")
         );
+        assertEquals(
+            "attachment; filename=\"resume*v1.pdf\"; filename*=UTF-8''r%C3%A9sum%C3%A9%2Av1.pdf",
+            HttpUtils.createContentDispositionHeader("attachment", "résumé*v1.pdf")
+        );
     }
 }
