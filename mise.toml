@@ -2,9 +2,12 @@
 java = "corretto-21"
 
 [tasks.live-test]
-description = "Run the S3 live tests: aws-vault exec dev -- mise run live-test"
+description = "Run the S3 and CloudFront live tests: aws-vault exec dev -- mise run live-test"
 run = '''
 URLBUILDER_LIVE_BUCKET_US_EAST_2="${URLBUILDER_LIVE_BUCKET_US_EAST_2:-widen-urlbuilder-live-test-us-east-2}" \
 URLBUILDER_LIVE_BUCKET_US_EAST_1="${URLBUILDER_LIVE_BUCKET_US_EAST_1:-widen-urlbuilder-live-test-us-east-1}" \
+URLBUILDER_LIVE_CLOUDFRONT_HOSTNAME="${URLBUILDER_LIVE_CLOUDFRONT_HOSTNAME:-d1qolazeseslhb.cloudfront.net}" \
+URLBUILDER_LIVE_CLOUDFRONT_KEY_PAIR_ID="${URLBUILDER_LIVE_CLOUDFRONT_KEY_PAIR_ID:-KQZPIJHINMSLE}" \
+URLBUILDER_LIVE_CLOUDFRONT_PRIVATE_KEY_FILE="${URLBUILDER_LIVE_CLOUDFRONT_PRIVATE_KEY_FILE:-$HOME/.config/urlbuilder-live-test/cloudfront-private-key.pem}" \
 ./gradlew liveTest --console=plain
 '''
