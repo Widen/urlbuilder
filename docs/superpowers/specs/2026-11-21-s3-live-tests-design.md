@@ -59,7 +59,7 @@ Uriah picked approach 1.
 - SigV4 in `us-east-2` with `inRegion`, every key, virtual-host and path-style, over HTTPS.
 - SigV4 in `us-east-1` with `withEndpoint("s3.amazonaws.com", "us-east-1")`, every key.
 - SigV2 in `us-east-1` with `usingSignatureVersion2()`, every key.
-- `withAttachmentFilename("Quarterly Report é+1.pdf")` and `withContentType("text/plain")`, under SigV4 and SigV2.
+- `withAttachmentFilename("Quarterly Report é+1.pdf")` and `withContentType("application/pdf")`, under SigV4 and SigV2.
 - One plain-HTTP SigV4 URL.
 - Rejections, each expecting 403 or 400:
   - expired: signed through the package-private clock two hours in the past with a one-hour expiration;

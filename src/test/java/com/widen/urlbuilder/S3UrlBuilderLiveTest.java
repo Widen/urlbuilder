@@ -63,7 +63,8 @@ class S3UrlBuilderLiveTest
     {
         bucketUsEast2 = System.getenv("URLBUILDER_LIVE_BUCKET_US_EAST_2");
         bucketUsEast1 = System.getenv("URLBUILDER_LIVE_BUCKET_US_EAST_1");
-        assumeTrue(bucketUsEast2 != null && bucketUsEast1 != null && System.getenv("AWS_ACCESS_KEY_ID") != null,
+        assumeTrue(bucketUsEast2 != null && bucketUsEast1 != null && System.getenv("AWS_ACCESS_KEY_ID") != null
+                && System.getenv("AWS_SECRET_ACCESS_KEY") != null,
             "set AWS credentials and the bucket variables; run: aws-vault exec dev -- mise run live-test");
 
         upload(bucketUsEast2, "us-east-2");
@@ -123,8 +124,9 @@ class S3UrlBuilderLiveTest
         Response response = get(url);
 
         assertEquals(200, response.status, withoutQuery(url) + " -> " + response);
-        assertEquals("application/pdf", response.contentType);
-        assertEquals(HttpUtils.createContentDispositionHeader("attachment", filename), response.contentDisposition);
+        assertEquals("application/pdf", response.contentType, withoutQuery(url));
+        assertEquals(HttpUtils.createContentDispositionHeader("attachment", filename), response.contentDisposition,
+            withoutQuery(url));
     }
 
     @Test
@@ -168,9 +170,16 @@ class S3UrlBuilderLiveTest
             .withCredentials(new EnvironmentVariableCredentialsProvider())
             .withRegion(region)
             .build();
-        for (String key : S3UrlBuilderAwsSdkTest.keys)
+        try
         {
-            s3.putObject(bucket, key, key);
+            for (String key : S3UrlBuilderAwsSdkTest.keys)
+            {
+                s3.putObject(bucket, key, key);
+            }
+        }
+        finally
+        {
+            s3.shutdown();
         }
     }
 
