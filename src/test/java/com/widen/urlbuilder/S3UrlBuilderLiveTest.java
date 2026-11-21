@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -94,6 +95,30 @@ class S3UrlBuilderLiveTest
     {
         String key = "test-key.txt";
         assertServes(key, signed(bucketUsEast2, key).inRegion("us-east-2").usingSsl(false).toString());
+    }
+
+    @ParameterizedTest
+    @MethodSource("keys")
+    void signsV2(String key) throws IOException
+    {
+        assertServes(key, signed(bucketUsEast1, key).usingSignatureVersion2().toString());
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void overridesResponseHeaders(boolean signatureVersion2) throws IOException
+    {
+        String filename = "Quarterly Report é+1.pdf";
+        S3UrlBuilder builder = signatureVersion2
+            ? signed(bucketUsEast1, "test-key.txt").usingSignatureVersion2()
+            : signed(bucketUsEast2, "test-key.txt").inRegion("us-east-2");
+        String url = builder.withAttachmentFilename(filename).withContentType("application/pdf").toString();
+
+        Response response = get(url);
+
+        assertEquals(200, response.status, withoutQuery(url) + " -> " + response);
+        assertEquals("application/pdf", response.contentType);
+        assertEquals(HttpUtils.createContentDispositionHeader("attachment", filename), response.contentDisposition);
     }
 
     private static void upload(String bucket, String region)
