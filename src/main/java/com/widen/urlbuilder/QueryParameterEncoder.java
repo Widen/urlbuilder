@@ -51,6 +51,8 @@ public class QueryParameterEncoder implements Encoder {
      * <p>
      * Decodes percent-encoded sequences back to their original UTF-8 characters.
      * Invalid percent sequences (e.g., {@code %GG}) are passed through unchanged.
+     *
+     * @throws IllegalArgumentException if the decoded bytes are not UTF-8, as in {@code caf%E9}
      */
     @Override
     public String decode(String text) {

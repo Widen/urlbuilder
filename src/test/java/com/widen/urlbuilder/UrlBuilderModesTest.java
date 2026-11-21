@@ -38,6 +38,15 @@ class UrlBuilderModesTest
     }
 
     @Test
+    void modeProtocolRelativeThrowsWhenHostnameBlank()
+    {
+        assertThrows(IllegalArgumentException.class, () ->
+            new UrlBuilder().withPath("evil.com/x").modeProtocolRelative().toString());
+        assertThrows(IllegalArgumentException.class, () ->
+            new UrlBuilder("", "evil.com/x").modeProtocolRelative().toString());
+    }
+
+    @Test
     void modeHostnameRelativeOmitsHostAndProtocol()
     {
         String url = new UrlBuilder(null, "foo/bar/baz.html").modeHostnameRelative().toString();

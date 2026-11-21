@@ -264,7 +264,8 @@ builder.isSslEnabled()        // true
 The constructor decodes percent-encoded text in the path and the query string, so the getters return plain text. It
 reads a `+` in the query string as a space, as HTML forms write it and servers read it, so `?q=a+b` is written back as
 `?q=a%20b`. A `+` in the path stays a plus. It throws `UrlBuilder.NonParsableUrl` for a string that `java.net.URL`
-cannot parse.
+cannot parse, and `IllegalArgumentException` for a percent-encoded sequence that is not UTF-8, such as `/caf%E9`,
+because it cannot write that URL back unchanged.
 
 ## Relative URLs
 
@@ -283,7 +284,8 @@ builder.modeHostnameRelative().toString()
 // /foo
 ```
 
-A builder made with the no-argument constructor starts in hostname-relative mode.
+A fully qualified or protocol-relative URL needs a hostname, and `toString()` throws `IllegalArgumentException` without
+one. A builder made with the no-argument constructor starts in hostname-relative mode.
 
 ```java
 new UrlBuilder().withPath("search").addParameter("q", "shoes").toString()
@@ -337,14 +339,13 @@ signs them, so you can share a private object through a link that expires.
 new S3UrlBuilder("my-bucket", "path/to/file.txt")
     .inRegion("us-west-2")
     .toString()
-// http://my-bucket.s3.us-west-2.amazonaws.com/path/to/file.txt
+// https://my-bucket.s3.us-west-2.amazonaws.com/path/to/file.txt
 
 // Signed URL that works for one hour
 new S3UrlBuilder("my-bucket", "private/file.txt")
     .inRegion("us-east-1")
     .usingCredentials(accessKey, secretKey)
     .expireIn(Duration.ofHours(1))
-    .usingSsl()
     .toString()
 // https://my-bucket.s3.us-east-1.amazonaws.com/private/file.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&...&X-Amz-Signature=...
 
@@ -376,15 +377,21 @@ The details:
   region and accepts any expiration.
 * **Response headers:** `withAttachmentFilename` sets the `Content-Disposition` header that makes a browser download the
   file, and `withContentType` sets the `Content-Type` header. Both require a signed URL.
-* **Endpoint:** `inRegion("us-west-2")` selects a regional endpoint, and `withEndpoint(endpoint, region)` names any
-  S3-compatible service and the region it signs for. `withEndpoint(endpoint)` clears the region.
-* **Bucket placement:** the bucket goes in the hostname by default. The table lists all three placements.
+* **Endpoint:** `inRegion("us-west-2")` selects a regional endpoint, which ends in `.amazonaws.com.cn` for a China
+  region, and `withEndpoint(endpoint, region)` names any S3-compatible service and the region it signs for.
+  `withEndpoint(endpoint)` clears the region.
+* **Scheme:** the URL uses HTTPS by default, and `usingSsl(false)` writes `http`.
+* **Bucket placement:** the bucket goes in the hostname by default. The table lists all three placements. The default
+  moves the bucket to the path where the hostname cannot work: the name is not a DNS name, the endpoint is an IP
+  address, or the name contains a period and the URL uses HTTPS, because the endpoint's wildcard certificate does not
+  match `my.bucket.s3.amazonaws.com`. A path-style URL reaches a bucket outside `us-east-1` only through its regional
+  endpoint, so call `inRegion` for such a bucket.
 
 | Method | Result |
 | --- | --- |
-| `usingBucketInHostname()` (default) | `http://my-bucket.s3.amazonaws.com/key.txt` |
-| `usingBucketVirtualHost()`, for a [bucket served from its own domain](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#VirtualHostingCustomURLs) | `http://assets.example.com/key.txt` |
-| `usingBucketInPath()`, for a [path-style request](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access) | `http://s3.amazonaws.com/my-bucket/key.txt` |
+| `usingBucketInHostname()` (default) | `https://my-bucket.s3.amazonaws.com/key.txt` |
+| `usingBucketVirtualHost()`, for a [bucket served from its own domain](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#VirtualHostingCustomURLs) | `https://assets.example.com/key.txt` |
+| `usingBucketInPath()`, for a [path-style request](https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html#path-style-access) | `https://s3.amazonaws.com/my-bucket/key.txt` |
 
 ## Signed CloudFront URLs
 
@@ -419,7 +426,12 @@ The details:
   as they do for S3.
 * **Private key:** `fromPemString` reads a PKCS#1 or PKCS#8 key in PEM form, and `fromDerBinary` reads a PKCS#8 key in
   DER form from an `InputStream`.
-* **Other settings:** `withSsl()` selects HTTPS, and `addParameter` adds a query parameter that the signature covers.
+* **Key:** the builder encodes the key as `S3UrlBuilder` does, and throws `IllegalArgumentException` for a key that is
+  blank or only slashes, which would sign the root of the distribution.
+* **Scheme:** the URL uses HTTPS by default, and `withSsl(false)` writes `http`. The signature covers the scheme, so
+  request the URL with the scheme it was signed with.
+* **Parameters:** `addParameter` adds a query parameter that the signature covers. It rejects `Expires`, `Signature`,
+  `Key-Pair-Id`, and `Policy`, which CloudFront reads the signature from.
 
 ## Signing URLs yourself
 
@@ -607,7 +619,7 @@ The `SigningContext` describes the URL before signing:
 * `getEncodedPath()` returns the encoded path.
 * `getEncodedQuery()` returns the encoded query string.
 * `getEncodedPathAndQuery()` returns the encoded path and query string together, without the scheme or host.
-* `getParameters()` returns the unencoded query parameters.
+* `getParameters()` returns the unencoded query parameters, as a map from each name to the list of its values.
 * `getFragment()` returns the fragment, which is not part of the text to sign.
 * `isSsl()` returns whether the URL uses HTTPS.
 * `getGenerationMode()` returns the generation mode: fully qualified, protocol relative, or hostname relative.

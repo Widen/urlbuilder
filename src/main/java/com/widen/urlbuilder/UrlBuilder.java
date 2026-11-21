@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.regex.Pattern;
@@ -102,6 +103,8 @@ public class UrlBuilder {
      *
      * @param spec the URL string to parse
      * @throws NonParsableUrl if input is not parsable into a java.net.URL object
+     * @throws IllegalArgumentException if a percent-encoded sequence in the path or query string is not UTF-8, as
+     *         in {@code /caf%E9}; the builder could not write that URL back unchanged
      */
     public UrlBuilder(String spec) {
         URL url = parseUrlInput(spec);
@@ -227,7 +230,7 @@ public class UrlBuilder {
      * @return The URL path.
      */
     public String getPath() {
-        return "/" + StringUtilsInternal.join(path, "/");
+        return "/" + String.join("/", path);
     }
 
     /**
@@ -324,7 +327,9 @@ public class UrlBuilder {
      * @return this builder for method chaining
      * @see LegacyEncoder
      * @since 3.0.0
+     * @deprecated This method exists to ease the move from v2.x. Move to the default RFC 3986 encoding.
      */
+    @Deprecated
     @SuppressWarnings("deprecation")
     public UrlBuilder usingLegacyEncoding() {
         LegacyEncoder legacyEncoder = new LegacyEncoder();
@@ -394,7 +399,7 @@ public class UrlBuilder {
      *             negative number means the default port of the scheme
      */
     public void setPort(int port) {
-        this.port = port;
+        this.port = Math.max(port, 0);
 
         if (port == 443) {
             usingSsl(true);
@@ -481,6 +486,17 @@ public class UrlBuilder {
         segments.add(segment.toString());
 
         return segments;
+    }
+
+    /**
+     * Returns the host in lower case and without the default port of the scheme, which is how HTTP clients send it
+     * in the Host header. Some clients, such as Go's, send the host exactly as the URL writes it, so the S3 and
+     * CloudFront builders write it this way, and their signatures cover it.
+     */
+    static String hostAsClientsSendIt(String host, boolean ssl) {
+        String lowerCase = host.toLowerCase(Locale.ROOT);
+        String defaultPort = ssl ? ":443" : ":80";
+        return lowerCase.endsWith(defaultPort) ? lowerCase.substring(0, lowerCase.length() - defaultPort.length()) : lowerCase;
     }
 
     private List<String> makePathSegments(String in, boolean decodeSegments) {
@@ -736,6 +752,7 @@ public class UrlBuilder {
      * <p>
      * This method may be called multiple times, possibly returning different results based on current state.
      *
+     * @throws IllegalArgumentException if the hostname is blank in fully qualified or protocol-relative mode
      * @see #modeFullyQualified()
      * @see #modeHostnameRelative()
      * @see #modeProtocolRelative()
@@ -744,8 +761,9 @@ public class UrlBuilder {
     public String toString() {
         StringBuilder url = new StringBuilder();
 
-        if (GenerationMode.FULLY_QUALIFIED.equals(mode) && StringUtilsInternal.isBlank(hostname)) {
-            throw new IllegalArgumentException("Hostname cannot be blank when generation mode is FULLY_QUALIFIED.");
+        // A blank host would write "//null/a" or "///a", which a browser reads as a link to the host "a"
+        if (!GenerationMode.HOSTNAME_RELATIVE.equals(mode) && StringUtilsInternal.isBlank(hostname)) {
+            throw new IllegalArgumentException("Hostname cannot be blank when generation mode is " + mode + ".");
         }
 
         if (GenerationMode.FULLY_QUALIFIED.equals(mode)) {
@@ -798,7 +816,7 @@ public class UrlBuilder {
             return "/";
         }
 
-        String encodedPath = "/" + StringUtilsInternal.join(encodePathSegments(), "/");
+        String encodedPath = "/" + String.join("/", encodePathSegments());
         return trailingPathSlash ? encodedPath + "/" : encodedPath;
     }
 
@@ -846,18 +864,13 @@ public class UrlBuilder {
             protocol = ssl ? "https" : "http";
         }
 
-        Map<String, String> parameters = new LinkedHashMap<>();
-        for (QueryParam qp : queryParams) {
-            parameters.put(qp.key, qp.value);
-        }
-
         return new SigningContextImpl(
             protocol,
             hostname != null ? hostname : "",
             hasNonDefaultPort() ? port : null,
             encodedPath,
             encodedQuery,
-            parameters,
+            getQueryParameters(),
             fragment,
             unsignedUrl,
             ssl,

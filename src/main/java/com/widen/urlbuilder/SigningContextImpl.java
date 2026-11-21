@@ -39,7 +39,7 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
     private final Integer port;
     private final String encodedPath;
     private final String encodedQuery;
-    private final Map<String, String> parameters;
+    private final Map<String, List<String>> parameters;
     private final String fragment;
     private final String url;
     private final boolean ssl;
@@ -56,14 +56,14 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
      * @param port The port number or {@code null} for default
      * @param encodedPath The encoded path
      * @param encodedQuery The encoded query string without leading "?"
-     * @param parameters The raw (unencoded) query parameters map
+     * @param parameters The raw (unencoded) values of each query parameter
      * @param fragment The fragment without leading "#", or null
      * @param url The complete unsigned URL
      * @param ssl True if using SSL
      * @param generationMode The generation mode
      */
     SigningContextImpl(String protocol, String hostname, Integer port,
-                       String encodedPath, String encodedQuery, Map<String, String> parameters,
+                       String encodedPath, String encodedQuery, Map<String, List<String>> parameters,
                        String fragment,
                        String url, boolean ssl, UrlBuilder.GenerationMode generationMode) {
         this(protocol, hostname, port, encodedPath, encodedQuery, parameters, fragment, url, ssl, generationMode,
@@ -76,7 +76,7 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
      * @param queryEncoder The encoder for parameters added with {@link #addParameter(String, Object)}
      */
     SigningContextImpl(String protocol, String hostname, Integer port,
-                       String encodedPath, String encodedQuery, Map<String, String> parameters,
+                       String encodedPath, String encodedQuery, Map<String, List<String>> parameters,
                        String fragment,
                        String url, boolean ssl, UrlBuilder.GenerationMode generationMode, Encoder queryEncoder) {
         this.protocol = protocol;
@@ -84,7 +84,7 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
         this.port = port;
         this.encodedPath = encodedPath;
         this.encodedQuery = encodedQuery;
-        this.parameters = parameters != null ? Collections.unmodifiableMap(parameters) : Collections.emptyMap();
+        this.parameters = parameters != null ? unmodifiableCopy(parameters) : Collections.emptyMap();
         this.fragment = fragment;
         this.url = url;
         this.ssl = ssl;
@@ -151,16 +151,23 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
     }
     
     @Override
-    public Map<String, String> getParameters() {
+    public Map<String, List<String>> getParameters() {
         if (addedParameters.isEmpty()) {
             return parameters;
         }
 
-        Map<String, String> all = new LinkedHashMap<>(parameters);
+        Map<String, List<String>> all = new LinkedHashMap<>();
+        parameters.forEach((name, values) -> all.put(name, new ArrayList<>(values)));
         for (UrlBuilder.QueryParam added : addedParameters) {
-            all.put(added.key, added.value);
+            all.computeIfAbsent(added.key, name -> new ArrayList<>()).add(added.value);
         }
-        return Collections.unmodifiableMap(all);
+        return unmodifiableCopy(all);
+    }
+
+    private static Map<String, List<String>> unmodifiableCopy(Map<String, List<String>> parameters) {
+        Map<String, List<String>> copy = new LinkedHashMap<>();
+        parameters.forEach((name, values) -> copy.put(name, Collections.unmodifiableList(new ArrayList<>(values))));
+        return Collections.unmodifiableMap(copy);
     }
     
     @Override

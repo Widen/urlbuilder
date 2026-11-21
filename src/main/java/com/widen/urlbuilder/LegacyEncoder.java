@@ -13,7 +13,10 @@ import java.net.URLEncoder;
  * <p>
  * In v2.x, this encoding was used for both path segments and query parameters. When
  * {@link UrlBuilder#usingLegacyEncoding()} is called, this encoder is set for both
- * path and query encoding to replicate v2.x behavior exactly.
+ * path and query encoding, so the builder encodes each segment and parameter as v2.x did.
+ * The builder's other v3 changes still apply: it writes a parameter value of only whitespace
+ * as {@code q=%20} where v2.x wrote {@code q}, and it decodes the path of a URL it parses
+ * where v2.x encoded it a second time.
  * <p>
  * <b>Note:</b> New code should use:
  * <ul>

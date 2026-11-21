@@ -17,6 +17,8 @@ import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -36,7 +38,8 @@ class S3UrlBuilderTest
     {
         S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "foo/bar.jpg");
 
-        assertEquals("http://bucketuno.s3.amazonaws.com/foo/bar.jpg", builder.toString());
+        assertEquals("https://bucketuno.s3.amazonaws.com/foo/bar.jpg", builder.toString());
+        assertEquals("http://bucketuno.s3.amazonaws.com/foo/bar.jpg", builder.usingSsl(false).toString());
     }
 
     @Test
@@ -44,13 +47,13 @@ class S3UrlBuilderTest
     {
         S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "/foo/bar.jpg");
 
-        assertEquals("http://bucketuno.s3.amazonaws.com/foo/bar.jpg", builder.toString());
+        assertEquals("https://bucketuno.s3.amazonaws.com/foo/bar.jpg", builder.toString());
     }
 
     @Test
     void testDnsBucket()
     {
-        S3UrlBuilder builder = new S3UrlBuilder("bucketuno.test.com", "foo/bar.jpg").usingBucketInHostname();
+        S3UrlBuilder builder = new S3UrlBuilder("bucketuno.test.com", "foo/bar.jpg").usingSsl(false).usingBucketInHostname();
 
         assertEquals("http://bucketuno.test.com.s3.amazonaws.com/foo/bar.jpg", builder.toString());
     }
@@ -60,7 +63,35 @@ class S3UrlBuilderTest
     {
         S3UrlBuilder builder = new S3UrlBuilder("bucketuno.test.com", "foo/bar.jpg").usingBucketVirtualHost();
 
-        assertEquals("http://bucketuno.test.com/foo/bar.jpg", builder.toString());
+        assertEquals("https://bucketuno.test.com/foo/bar.jpg", builder.toString());
+    }
+
+    /**
+     * The certificate for *.s3.amazonaws.com matches one label, so a bucket name with a period fails the TLS check
+     * as a subdomain.
+     */
+    @Test
+    void testBucketWithPeriodGoesInPathOverHttps()
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("bucketuno.test.com", "foo/bar.jpg").usingSsl();
+
+        assertEquals("https://s3.amazonaws.com/bucketuno.test.com/foo/bar.jpg", builder.toString());
+        assertEquals("https://bucketuno.test.com/foo/bar.jpg", builder.usingBucketVirtualHost().toString());
+        assertEquals("https://bucketuno.s3.amazonaws.com/foo/bar.jpg", builder.usingBucketInHostname().withBucket("bucketuno").toString());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+        "127.0.0.1:9000,   http://127.0.0.1:9000/bucketuno/foo/bar.jpg",
+        "10.1.2.3,         http://10.1.2.3/bucketuno/foo/bar.jpg",
+        "[::1]:9000,       http://[::1]:9000/bucketuno/foo/bar.jpg",
+        "minio.local:9000, http://bucketuno.minio.local:9000/foo/bar.jpg"
+    })
+    void testBucketGoesInPathForIpAddressEndpoint(String endpoint, String expectedUrl)
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "foo/bar.jpg").usingSsl(false).withEndpoint(endpoint);
+
+        assertEquals(expectedUrl, builder.toString());
     }
 
     @Test
@@ -68,7 +99,7 @@ class S3UrlBuilderTest
     {
         S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "foo/bar.jpg").inRegion("eu-west-1");
 
-        assertEquals("http://bucketuno.s3.eu-west-1.amazonaws.com/foo/bar.jpg", builder.toString());
+        assertEquals("https://bucketuno.s3.eu-west-1.amazonaws.com/foo/bar.jpg", builder.toString());
     }
 
     @Test
@@ -76,7 +107,7 @@ class S3UrlBuilderTest
     {
         S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "foo/bar.jpg").withEndpoint("s3clone.example.com").usingBucketInPath();
 
-        assertEquals("http://s3clone.example.com/bucketuno/foo/bar.jpg", builder.toString());
+        assertEquals("https://s3clone.example.com/bucketuno/foo/bar.jpg", builder.toString());
     }
 
     @Test
@@ -138,7 +169,7 @@ class S3UrlBuilderTest
     {
         S3UrlBuilder builder = new S3UrlBuilder("urlbuildertests.widen.com", "cat3 % public.jpeg");
 
-        assertEquals("http://urlbuildertests.widen.com.s3.amazonaws.com/cat3%20%25%20public.jpeg", builder.toString());
+        assertEquals("https://s3.amazonaws.com/urlbuildertests.widen.com/cat3%20%25%20public.jpeg", builder.toString());
     }
 
     @Test
@@ -213,7 +244,7 @@ class S3UrlBuilderTest
             .usingCredentials("AKIAIOSFODNN7EXAMPLE", secretKey)
             .toString();
 
-        assertTrue(pathStyle.startsWith("http://s3.amazonaws.com/test-bucket/test-key.txt?"), pathStyle);
+        assertTrue(pathStyle.startsWith("https://s3.amazonaws.com/test-bucket/test-key.txt?"), pathStyle);
         assertEquals(expectedSignature, signatureOf(hostnameStyle));
         assertEquals(expectedSignature, signatureOf(pathStyle));
     }
@@ -224,7 +255,7 @@ class S3UrlBuilderTest
         S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "a%20b.txt");
 
         assertEquals("a%20b.txt", builder.getKey());
-        assertEquals("http://bucketuno.s3.amazonaws.com/a%2520b.txt", builder.toString());
+        assertEquals("https://bucketuno.s3.amazonaws.com/a%2520b.txt", builder.toString());
     }
 
     @Test
@@ -232,7 +263,7 @@ class S3UrlBuilderTest
     {
         S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "a+b @c:d(1)~-_.txt");
 
-        assertEquals("http://bucketuno.s3.amazonaws.com/a%2Bb%20%40c%3Ad%281%29~-_.txt", builder.toString());
+        assertEquals("https://bucketuno.s3.amazonaws.com/a%2Bb%20%40c%3Ad%281%29~-_.txt", builder.toString());
     }
 
     @Test
@@ -242,11 +273,11 @@ class S3UrlBuilderTest
         S3UrlBuilder doubleSlash = new S3UrlBuilder("bucketuno", "a//b");
 
         assertEquals("folder/", folder.getKey());
-        assertEquals("http://bucketuno.s3.amazonaws.com/folder/", folder.toString());
+        assertEquals("https://bucketuno.s3.amazonaws.com/folder/", folder.toString());
         assertEquals("a//b", doubleSlash.getKey());
-        assertEquals("http://bucketuno.s3.amazonaws.com/a/%2Fb", doubleSlash.toString());
-        assertEquals("http://s3.amazonaws.com/bucketuno/a/%2Fb", doubleSlash.usingBucketInPath().toString());
-        assertEquals("http://bucketuno.s3.amazonaws.com/a/%2F%2Fb/%2F", new S3UrlBuilder("bucketuno", "a///b//").toString());
+        assertEquals("https://bucketuno.s3.amazonaws.com/a/%2Fb", doubleSlash.toString());
+        assertEquals("https://s3.amazonaws.com/bucketuno/a/%2Fb", doubleSlash.usingBucketInPath().toString());
+        assertEquals("https://bucketuno.s3.amazonaws.com/a/%2F%2Fb/%2F", new S3UrlBuilder("bucketuno", "a///b//").toString());
     }
 
     @Test
@@ -267,8 +298,8 @@ class S3UrlBuilderTest
             .usingCredentials("AKIAIOSFODNN7EXAMPLE", secretKey)
             .toString();
 
-        assertTrue(hostnameStyle.startsWith("http://test-bucket.s3.amazonaws.com/docs/a%2Bb%20%C3%A9.txt?"), hostnameStyle);
-        assertTrue(pathStyle.startsWith("http://s3.amazonaws.com/test-bucket/docs/a%2Bb%20%C3%A9.txt?"), pathStyle);
+        assertTrue(hostnameStyle.startsWith("https://test-bucket.s3.amazonaws.com/docs/a%2Bb%20%C3%A9.txt?"), hostnameStyle);
+        assertTrue(pathStyle.startsWith("https://s3.amazonaws.com/test-bucket/docs/a%2Bb%20%C3%A9.txt?"), pathStyle);
         assertEquals(expectedSignature, signatureOf(hostnameStyle));
         assertEquals(expectedSignature, signatureOf(pathStyle));
     }
@@ -278,7 +309,7 @@ class S3UrlBuilderTest
     {
         String url = new S3UrlBuilder("My_Bucket", "a.txt").usingBucketVirtualHost().toString();
 
-        assertEquals("http://s3.amazonaws.com/My_Bucket/a.txt", url);
+        assertEquals("https://s3.amazonaws.com/My_Bucket/a.txt", url);
     }
 
     @Test
@@ -286,7 +317,7 @@ class S3UrlBuilderTest
     {
         String url = new S3UrlBuilder("evil.example/x?", "a.txt").toString();
 
-        assertEquals("http://s3.amazonaws.com/evil.example%2Fx%3F/a.txt", url);
+        assertEquals("https://s3.amazonaws.com/evil.example%2Fx%3F/a.txt", url);
     }
 
     @Test

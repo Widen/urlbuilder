@@ -6,10 +6,13 @@ import java.security.PrivateKey;
 import java.security.Signature;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -61,7 +64,7 @@ public class CloudfrontUrlBuilder
 
     private String key;
 
-    private boolean ssl;
+    private boolean ssl = true;
 
     private final TrustedSignerCredentials trustedSignerCredentials;
 
@@ -72,6 +75,10 @@ public class CloudfrontUrlBuilder
     private final ExpireDateHolder expireDate = new ExpireDateHolder();
 
     private final Map<String, String> parameters = new LinkedHashMap<>();
+
+    /** The query parameters CloudFront reads the signature from. */
+    private static final Set<String> SIGNING_PARAMETERS =
+        new HashSet<>(Arrays.asList("Expires", "Signature", "Key-Pair-Id", "Policy"));
 
     /**
      * Constructs a CloudFront URL builder for creating "canned policy" signed URLs.
@@ -100,11 +107,12 @@ public class CloudfrontUrlBuilder
      * @param keyPairId The CloudFront key pair ID associated with your trusted signer
      * @param privateKey The RSA private key for signing
      * @param cryptoProvider The JCE crypto provider name (e.g., "SunRsaSign" or "BC" for Bouncy Castle)
+     * @throws IllegalArgumentException if key is blank or only slashes
      */
     public CloudfrontUrlBuilder(String distributionHostname, String key, String keyPairId, PrivateKey privateKey, String cryptoProvider)
     {
         this.distributionHostname = distributionHostname;
-        this.key = key;
+        withKey(key);
         this.trustedSignerCredentials = new TrustedSignerCredentials(keyPairId, privateKey, cryptoProvider);
     }
 
@@ -130,9 +138,12 @@ public class CloudfrontUrlBuilder
      *
      * @param key The path to the resource (e.g., "/videos/movie.mp4")
      * @return This builder for method chaining
+     * @throws IllegalArgumentException if key is blank or only slashes
      */
     public CloudfrontUrlBuilder withKey(String key)
     {
+        // A key of only slashes would sign the distribution root
+        InternalUtils.checkNotBlank(UrlBuilder.stripLeadingSlashes(key), "key");
         this.key = key;
         return this;
     }
@@ -178,23 +189,42 @@ public class CloudfrontUrlBuilder
      * @param key The parameter name
      * @param value The parameter value, or null to add the name alone
      * @return This builder for method chaining
+     * @throws IllegalArgumentException if key is {@code Expires}, {@code Signature}, {@code Key-Pair-Id}, or
+     *         {@code Policy}, which CloudFront reads the signature from
      */
     public CloudfrontUrlBuilder addParameter(String key, String value)
     {
+        if (SIGNING_PARAMETERS.contains(key))
+        {
+            throw new IllegalArgumentException("CloudFront reserves the parameter name " + key + " for the signature.");
+        }
+
         parameters.put(key, value);
         return this;
     }
 
     /**
-     * Enables HTTPS for the generated URL.
-     * 
-     * <p>When enabled, the URL will use the "https" scheme instead of "http".
-     * 
+     * Sets the generated URL to use the "https" scheme, which is the default.
+     *
      * @return This builder for method chaining
      */
     public CloudfrontUrlBuilder withSsl()
     {
         ssl = true;
+        return this;
+    }
+
+    /**
+     * Sets the scheme of the generated URL. The signature covers the scheme, so CloudFront rejects a signed
+     * {@code http} URL that is requested over {@code https}, and the reverse.
+     *
+     * @param useSsl true to use "https", the default, or false to use "http"
+     * @return This builder for method chaining
+     * @since 3.0.0
+     */
+    public CloudfrontUrlBuilder withSsl(boolean useSsl)
+    {
+        ssl = useSsl;
         return this;
     }
 
@@ -285,17 +315,19 @@ public class CloudfrontUrlBuilder
      * trusted signer credentials provided at construction time.
      * 
      * @return The fully-qualified signed CloudFront URL
-     * @throws IllegalArgumentException if expiration date has not been set
+     * @throws IllegalArgumentException if the expiration date has not been set or the distribution hostname is blank
      */
     @Override
     public String toString()
     {
         InternalUtils.checkNotNull(expireDate.getExpireDate(), "Expire date");
+        InternalUtils.checkNotBlank(distributionHostname, "Distribution hostname");
 
         // An S3 origin reads "+" in a path as a space, so encode keys as S3UrlBuilder does
         UrlBuilder builder = new UrlBuilder().usingPathEncoder(new QueryParameterEncoder());
 
-        builder.withHostname(distributionHostname);
+        // CloudFront rebuilds the signed resource from the request, so sign the host as the client sends it
+        builder.withHostname(UrlBuilder.hostAsClientsSendIt(distributionHostname, ssl));
         builder.withExactPathSegments(UrlBuilder.objectKeySegments(key));
         builder.usingSsl(ssl);
         builder.addParameters(parameters);

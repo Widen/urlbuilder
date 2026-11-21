@@ -21,6 +21,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
@@ -49,7 +50,7 @@ import javax.crypto.spec.SecretKeySpec;
  *     .expireIn(Duration.ofHours(1))
  *     .usingCredentials(awsAccessKey, awsSecretKey)
  *     .toString();
- * // Result: http://my-bucket.s3.us-west-2.amazonaws.com/path/to/file.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&...
+ * // Result: https://my-bucket.s3.us-west-2.amazonaws.com/path/to/file.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&...
  * }</pre>
  *
  * <p><b>With attachment download:</b>
@@ -132,13 +133,16 @@ public class S3UrlBuilder
 
     private Clock clock = Clock.systemUTC();
 
-    private boolean ssl;
+    private boolean ssl = true;
 
     private String fragment;
 
     private boolean protocolRelative;
 
     private static final long MAX_SIGV4_EXPIRES_SECONDS = Duration.ofDays(7).getSeconds();
+
+    /** An IPv4 address or a bracketed IPv6 address, with or without a port. */
+    private static final Pattern IP_ADDRESS_ENDPOINT = Pattern.compile("(\\d{1,3}\\.){3}\\d{1,3}(:\\d+)?|\\[.*");
 
     private static final DateTimeFormatter SIGV4_TIMESTAMP =
         DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'", Locale.ROOT).withZone(ZoneOffset.UTC);
@@ -183,6 +187,7 @@ public class S3UrlBuilder
      *
      * <p>A Signature Version 4 URL must expire from 1 second to 7 days after it is signed; {@link #toString()}
      * throws {@link IllegalArgumentException} for a duration outside that range, including one under a second.
+     * It counts whole seconds, so it drops the fraction of a second in the duration.
      *
      * @param duration The time from URL generation until the URL expires (must be positive)
      * @return This builder for method chaining
@@ -335,9 +340,11 @@ public class S3UrlBuilder
      *
      * @param endpoint fully qualified DNS hostname of S3 service
      * @return This builder for method chaining
+     * @throws IllegalArgumentException if endpoint is null or blank
      */
     public S3UrlBuilder withEndpoint(String endpoint)
     {
+        InternalUtils.checkNotBlank(endpoint, "endpoint");
         this.endpoint = endpoint;
         this.region = null;
         return this;
@@ -352,11 +359,12 @@ public class S3UrlBuilder
      * @param endpoint fully qualified DNS hostname of S3 service, with {@code :PORT} for a non-default port
      * @param region the signing region (e.g., "us-east-1")
      * @return This builder for method chaining
-     * @throws IllegalArgumentException if region is null or blank
+     * @throws IllegalArgumentException if endpoint or region is null or blank
      * @since 3.0.0
      */
     public S3UrlBuilder withEndpoint(String endpoint, String region)
     {
+        InternalUtils.checkNotBlank(endpoint, "endpoint");
         InternalUtils.checkNotBlank(region, "region");
         this.endpoint = endpoint;
         this.region = region;
@@ -364,12 +372,13 @@ public class S3UrlBuilder
     }
 
     /**
-     * Set endpoint based on AWS Region of bucket: {@code s3.$REGION.amazonaws.com}
+     * Set endpoint based on AWS Region of bucket: {@code s3.$REGION.amazonaws.com}, or
+     * {@code s3.$REGION.amazonaws.com.cn} for a China region
      *
      * <p>Also sets the region Signature Version 4 signs for. It must be the bucket's region: a URL signed for
      * another region fails with a 400 when used.
      *
-     * @param region AWS region identifier (e.g., "us-east-1", "eu-west-1")
+     * @param region AWS region identifier (e.g., "us-east-1", "eu-west-1"), read in lower case
      * @return This builder for method chaining
      * @throws IllegalArgumentException if region is null or blank
      * @see <a href="http://docs.amazonwebservices.com/AmazonS3/latest/dev/LocationSelection.html">S3 Location Selection Docs</a>
@@ -378,8 +387,10 @@ public class S3UrlBuilder
     public S3UrlBuilder inRegion(String region)
     {
         InternalUtils.checkNotBlank(region, "region");
-        endpoint = "s3." + region + ".amazonaws.com";
-        this.region = region;
+        // The host is written in lower case, and S3 rejects a credential scope that names the region differently
+        this.region = region.toLowerCase(Locale.ROOT);
+        String partitionSuffix = this.region.startsWith("cn-") ? ".amazonaws.com.cn" : ".amazonaws.com";
+        endpoint = "s3." + this.region + partitionSuffix;
         return this;
     }
 
@@ -449,7 +460,11 @@ public class S3UrlBuilder
     /**
      * Set URL generation to prefix bucket to hostname ".s3.amazonaws.com"
      * <p>
-     * This is the default generation mode.
+     * This is the default generation mode. The bucket goes in the path instead, as {@link #usingBucketInPath()}
+     * writes it, where the hostname cannot work: the name is not a DNS name, the endpoint is an IP address, or the
+     * name contains a period and the URL is HTTPS, because the endpoint's wildcard certificate does not match
+     * {@code my.bucket.s3.amazonaws.com}. A path-style URL reaches a bucket outside us-east-1 only through its
+     * regional endpoint, so call {@link #inRegion(String)} for such a bucket.
      * @return This builder for method chaining
      */
     public S3UrlBuilder usingBucketInHostname()
@@ -501,20 +516,20 @@ public class S3UrlBuilder
         String canonicalResource;
         List<String> pathSegments;
 
-        if (!isValidDnsBucketName() || BucketEncoding.PATH.equals(requestedBucketEncoding))
+        if (isBucketInPath())
         {
             pathSegments = new ArrayList<>();
             pathSegments.add(bucket);
             pathSegments.addAll(keySegments);
 
-            builder.withHostname(hostAsClientsSendIt(endpoint));
+            builder.withHostname(UrlBuilder.hostAsClientsSendIt(endpoint, ssl));
             canonicalResource = builder.withExactPathSegments(pathSegments).buildPath();
         }
         else
         {
             pathSegments = keySegments;
             String host = BucketEncoding.VIRTUAL_DNS.equals(requestedBucketEncoding) ? bucket : bucket + "." + endpoint;
-            builder.withHostname(hostAsClientsSendIt(host));
+            builder.withHostname(UrlBuilder.hostAsClientsSendIt(host, ssl));
             canonicalResource = "/" + bucket + builder.withExactPathSegments(keySegments).buildPath();
         }
 
@@ -537,6 +552,12 @@ public class S3UrlBuilder
         {
             canSign();
             Instant signingTime = clock.instant();
+            if (!signatureVersion2)
+            {
+                // S3 counts X-Amz-Expires from X-Amz-Date, which has no fraction of a second, so expireIn counts
+                // from there too. Otherwise one duration would sign or throw by the millisecond toString() ran in.
+                signingTime = signingTime.truncatedTo(ChronoUnit.SECONDS);
+            }
             Instant expireInstant = expireDate.getExpireDate(signingTime);
             InternalUtils.checkNotNull(expireInstant, "expire instant");
             Map<String, String> params = signatureVersion2
@@ -549,14 +570,23 @@ public class S3UrlBuilder
     }
 
     /**
-     * HTTP clients send the host in lower case and leave the default port of the scheme out of the Host header. Some,
-     * such as Go's, send the host exactly as the URL writes it, so the URL writes it that way too, and SigV4 signs it.
+     * The bucket goes in the path when the caller asks for it, and when the hostname forms cannot work: the name is
+     * not a DNS name, the endpoint is an IP address, which takes no subdomain, or the name has a period and the URL
+     * is HTTPS, where the endpoint's wildcard certificate covers one label.
      */
-    private String hostAsClientsSendIt(String host)
+    private boolean isBucketInPath()
     {
-        String lowerCase = host.toLowerCase(Locale.ROOT);
-        String defaultPort = ssl ? ":443" : ":80";
-        return lowerCase.endsWith(defaultPort) ? lowerCase.substring(0, lowerCase.length() - defaultPort.length()) : lowerCase;
+        if (!isValidDnsBucketName() || BucketEncoding.PATH.equals(requestedBucketEncoding))
+        {
+            return true;
+        }
+
+        if (BucketEncoding.VIRTUAL_DNS.equals(requestedBucketEncoding))
+        {
+            return false;
+        }
+
+        return IP_ADDRESS_ENDPOINT.matcher(endpoint).matches() || (ssl && bucket.contains("."));
     }
 
     private void canSign()
@@ -583,7 +613,7 @@ public class S3UrlBuilder
     }
 
     /**
-     * Set generated URL to use the "https" scheme.
+     * Set generated URL to use the "https" scheme, which is the default.
      * @return This builder for method chaining
      */
     public S3UrlBuilder usingSsl()
@@ -596,7 +626,7 @@ public class S3UrlBuilder
     /**
      * Set generated URL to use "https" scheme.
      *
-     * @param useSsl true to use "https" or false to use "http"
+     * @param useSsl true to use "https", the default, or false to use "http"
      * @return This builder for method chaining
      */
     public S3UrlBuilder usingSsl(boolean useSsl)
@@ -634,7 +664,7 @@ public class S3UrlBuilder
     }
 
     /**
-     * Set generation mode to Fully Qualified. This is the default mode; e.g. {@code "http://my.host.com/foo/bar.html"}
+     * Set generation mode to Fully Qualified. This is the default mode; e.g. {@code "https://my.host.com/foo/bar.html"}
      *
      * <p>Default mode.
      * @return This builder for method chaining

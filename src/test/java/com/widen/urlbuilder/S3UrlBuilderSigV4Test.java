@@ -166,6 +166,33 @@ class S3UrlBuilderSigV4Test
     }
 
     @Test
+    void withEndpointRejectsBlankEndpoint()
+    {
+        S3UrlBuilder builder = builder();
+
+        assertThrows(IllegalArgumentException.class, () -> builder.withEndpoint(null));
+        assertThrows(IllegalArgumentException.class, () -> builder.withEndpoint(" "));
+        assertThrows(IllegalArgumentException.class, () -> builder.withEndpoint(null, "us-east-1"));
+        assertThrows(IllegalArgumentException.class, () -> builder.withEndpoint("", "us-east-1"));
+    }
+
+    @Test
+    void inRegionSignsRegionInLowerCaseAsTheHostWritesIt()
+    {
+        String url = builder().inRegion("US-West-2").expireIn(Duration.ofHours(1)).toString();
+
+        assertEquals(builder().inRegion("us-west-2").expireIn(Duration.ofHours(1)).toString(), url);
+    }
+
+    @Test
+    void inRegionUsesChinaPartitionEndpoint()
+    {
+        String url = new S3UrlBuilder("examplebucket", "test.txt").usingSsl().inRegion("cn-north-1").toString();
+
+        assertEquals("https://examplebucket.s3.cn-north-1.amazonaws.com.cn/test.txt", url);
+    }
+
+    @Test
     void inRegionRejectsBlankRegion()
     {
         S3UrlBuilder builder = builder();
@@ -180,6 +207,12 @@ class S3UrlBuilderSigV4Test
             Arguments.of("at the signing time", expiration(b -> b.expireAt(may24.instant())), null),
             Arguments.of("7 days and 1 second", expiration(b -> b.expireIn(Duration.ofDays(7).plusSeconds(1))), null),
             Arguments.of("500 milliseconds", expiration(b -> b.expireIn(Duration.ofMillis(500))), null),
+            Arguments.of("800 milliseconds, signed 400 milliseconds into a second", expiration(b -> b
+                .usingClock(Clock.fixed(may24.instant().plusMillis(400), ZoneOffset.UTC))
+                .expireIn(Duration.ofMillis(800))), null),
+            Arguments.of("1500 milliseconds, signed 600 milliseconds into a second", expiration(b -> b
+                .usingClock(Clock.fixed(may24.instant().plusMillis(600), ZoneOffset.UTC))
+                .expireIn(Duration.ofMillis(1500))), "1"),
             Arguments.of("7 days", expiration(b -> b.expireIn(Duration.ofDays(7))), "604800"),
             Arguments.of("1500 milliseconds", expiration(b -> b.expireIn(Duration.ofMillis(1500))), "1"),
             Arguments.of("10 seconds after the X-Amz-Date second", expiration(b -> b
