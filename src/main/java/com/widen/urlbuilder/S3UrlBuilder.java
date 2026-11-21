@@ -17,6 +17,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.SignatureException;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Date;
 import java.util.HashMap;
@@ -87,7 +88,7 @@ public class S3UrlBuilder
 {
     private String bucket;
 
-    private List<String> key;
+    private String key;
 
     private String endpoint = "s3.amazonaws.com";
 
@@ -105,7 +106,8 @@ public class S3UrlBuilder
 
     private String contentType;
 
-    private final UrlBuilder builder = new UrlBuilder();
+    // S3 reads "+" in a path as a space, so encode keys as the AWS SDKs do: everything but A-Z a-z 0-9 - . _ ~
+    private final UrlBuilder builder = new UrlBuilder().usingPathEncoder(new QueryParameterEncoder());
 
     /**
      * Enumeration of bucket encoding strategies for S3 URLs.
@@ -297,6 +299,13 @@ public class S3UrlBuilder
     /**
      * Reset S3 key to new value
      *
+     * <p>The key is literal text: the builder encodes every character except letters, digits, {@code -._~},
+     * and {@code /}, as the AWS SDKs do, so {@code a%20b.txt} names that object and not {@code a b.txt}, and
+     * {@code a+b.txt} is not read as {@code a b.txt}. Leading slashes are dropped,
+     * and every other slash is kept, so {@code folder/} and {@code a//b} name objects of their own. After the
+     * first slash of a run, each slash is written as {@code %2F}, as the AWS SDKs write it: {@code a//b} becomes
+     * {@code a/%2Fb}.
+     *
      * @param key S3 object key
      * @return This builder for method chaining
      * @throws IllegalArgumentException if key is blank
@@ -305,7 +314,7 @@ public class S3UrlBuilder
     {
         InternalUtils.checkNotBlank(key, "key");
 
-        this.key = builder.makePathSegments(key, true);
+        this.key = UrlBuilder.stripLeadingSlashes(key);
 
         return this;
     }
@@ -363,24 +372,24 @@ public class S3UrlBuilder
      */
     public String toString()
     {
-        String pathSegments = getKey();
+        List<String> keySegments = keySegments(key);
 
-        String canonicalResource = String.format("/%s/%s", bucket, pathSegments);
+        // AWS signature V2 signs the path exactly as the request sends it, encoded
+        String canonicalResource;
 
         if (!isValidDnsBucketName() || BucketEncoding.PATH.equals(requestedBucketEncoding))
         {
+            List<String> pathSegments = new ArrayList<>();
+            pathSegments.add(bucket);
+            pathSegments.addAll(keySegments);
+
             builder.withHostname(endpoint);
-            builder.withPathEncoded(canonicalResource);
-        }
-        else if (BucketEncoding.VIRTUAL_DNS.equals(requestedBucketEncoding))
-        {
-            builder.withHostname(bucket);
-            builder.withPathEncoded(pathSegments);
+            canonicalResource = builder.withExactPathSegments(pathSegments).buildPath();
         }
         else
         {
-            builder.withHostname(bucket + "." + endpoint);
-            builder.withPathEncoded(pathSegments);
+            builder.withHostname(BucketEncoding.VIRTUAL_DNS.equals(requestedBucketEncoding) ? bucket : bucket + "." + endpoint);
+            canonicalResource = "/" + bucket + builder.withExactPathSegments(keySegments).buildPath();
         }
 
         try
@@ -414,6 +423,42 @@ public class S3UrlBuilder
         }
     }
 
+    /**
+     * Splits the key into path segments the way the AWS SDKs write it: the first slash of a run separates segments,
+     * and the rest belong to the next segment, which encodes them as %2F, so {@code a///b} becomes
+     * {@code a/%2F%2Fb}. HTTP clients and proxies may merge {@code //}, which would change the key.
+     */
+    private static List<String> keySegments(String key)
+    {
+        List<String> segments = new ArrayList<>();
+        if (key.isEmpty())
+        {
+            return segments;
+        }
+
+        StringBuilder segment = new StringBuilder();
+        for (int i = 0; i < key.length(); i++)
+        {
+            char c = key.charAt(i);
+            if (c != '/')
+            {
+                segment.append(c);
+                continue;
+            }
+
+            segments.add(segment.toString());
+            segment.setLength(0);
+            while (i + 1 < key.length() && key.charAt(i + 1) == '/')
+            {
+                segment.append('/');
+                i++;
+            }
+        }
+        segments.add(segment.toString());
+
+        return segments;
+    }
+
     private void canSign()
     {
         if (!expireDate.isSet())
@@ -430,11 +475,11 @@ public class S3UrlBuilder
     /**
      * Get current key value.
      *
-     * @return path segments separated by '/'
+     * @return the key as given, unencoded and without leading slashes
      */
     public String getKey()
     {
-        return StringUtilsInternal.join(key, "/");
+        return key;
     }
 
     /**

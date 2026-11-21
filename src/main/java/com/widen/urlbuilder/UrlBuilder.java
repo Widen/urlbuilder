@@ -24,6 +24,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.regex.Pattern;
 
 /**
  * Utility class for constructing syntactically correct HTTP URLs using a fluent method-chaining API.
@@ -55,6 +56,8 @@ import java.util.Map.Entry;
  * @see GenerationMode
  */
 public class UrlBuilder {
+
+    private static final Pattern LEADING_SLASHES = Pattern.compile("^/+");
 
     private boolean ssl = false;
 
@@ -92,7 +95,9 @@ public class UrlBuilder {
      * <p>
      * {@link java.net.URL} is used to parse the input. The resulting builder
      * will be set to {@link GenerationMode#FULLY_QUALIFIED} mode. Percent-encoded
-     * sequences in the path and query string are decoded.
+     * sequences in the path and query string are decoded. A path that ends with a slash
+     * keeps it, as {@link #includeTrailingSlash()} does; empty segments such as the
+     * one in {@code /a//b} are dropped.
      *
      * @param spec the URL string to parse
      * @throws NonParsableUrl if input is not parsable into a java.net.URL object
@@ -104,6 +109,7 @@ public class UrlBuilder {
         withHostname(url.getHost());
         setPort(url.getPort());
         withPathEncoded(url.getPath());
+        trailingPathSlash = url.getPath().length() > 1 && url.getPath().endsWith("/");
 
         String params = url.getQuery();
         if (params != null) {
@@ -418,7 +424,33 @@ public class UrlBuilder {
         return this;
     }
 
-    List<String> makePathSegments(String in, boolean decodeSegments) {
+    /**
+     * Sets the path to these unencoded segments as they are, keeping empty segments, which
+     * {@link #withPath(String)} drops. An object key needs this, since {@code a//b} and {@code folder/}
+     * name objects of their own.
+     */
+    UrlBuilder withExactPathSegments(List<String> segments) {
+        path = new ArrayList<>(segments);
+        return this;
+    }
+
+    /**
+     * Returns the key without its leading slashes, as S3 and CloudFront keys are given.
+     */
+    static String stripLeadingSlashes(String key) {
+        return key == null ? "" : LEADING_SLASHES.matcher(key).replaceFirst("");
+    }
+
+    /**
+     * Splits an object key into path segments for {@link #withExactPathSegments(List)}, dropping leading
+     * slashes and keeping every other slash.
+     */
+    static List<String> objectKeySegments(String key) {
+        String stripped = stripLeadingSlashes(key);
+        return stripped.isEmpty() ? Collections.emptyList() : Arrays.asList(stripped.split("/", -1));
+    }
+
+    private List<String> makePathSegments(String in, boolean decodeSegments) {
         ArrayList<String> list = new ArrayList<String>();
 
         if (in == null) {
@@ -728,7 +760,7 @@ public class UrlBuilder {
         return port > 0 && port != (ssl ? 443 : 80);
     }
 
-    private String buildPath() {
+    String buildPath() {
         if (path.isEmpty()) {
             return "/";
         }

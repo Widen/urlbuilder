@@ -1,4 +1,6 @@
 [versions]
+# The last AWS SDK v1 release; only v1 presigns with Signature Version 2, which S3UrlBuilder implements
+aws-sdk-v1 = "1.12.797"
 bouncycastle = "1.87"
 commons-io = "2.21.0"
 junit = "5.13.4"
@@ -6,6 +8,7 @@ nexus-publish = "2.0.0"
 slf4j = "2.0.17"
 
 [libraries]
+aws-java-sdk-s3 = { module = "com.amazonaws:aws-java-sdk-s3", version.ref = "aws-sdk-v1" }
 bouncycastle-bcprov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 bouncycastle-bcpkix = { module = "org.bouncycastle:bcpkix-jdk18on", version.ref = "bouncycastle" }
 commons-io = { module = "commons-io:commons-io", version.ref = "commons-io" }
