@@ -5,8 +5,13 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.Arrays;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import com.amazonaws.auth.EnvironmentVariableCredentialsProvider;
@@ -22,6 +27,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /**
@@ -121,6 +127,41 @@ class S3UrlBuilderLiveTest
         assertEquals(HttpUtils.createContentDispositionHeader("attachment", filename), response.contentDisposition);
     }
 
+    @Test
+    void rejectsExpiredUrl() throws IOException
+    {
+        String url = signed(bucketUsEast2, "test-key.txt")
+            .inRegion("us-east-2")
+            .usingClock(Clock.fixed(Instant.now().minus(Duration.ofHours(2)), ZoneOffset.UTC))
+            .expireIn(Duration.ofHours(1))
+            .toString();
+
+        assertRejects(403, "AccessDenied", url);
+    }
+
+    @Test
+    void rejectsTamperedSignature() throws IOException
+    {
+        String url = signed(bucketUsEast2, "test-key.txt").inRegion("us-east-2").toString();
+        Matcher signature = Pattern.compile("X-Amz-Signature=[0-9a-f]+").matcher(url);
+        assertTrue(signature.find(), withoutQuery(url) + " has no X-Amz-Signature");
+        char last = url.charAt(signature.end() - 1);
+        String tampered = url.substring(0, signature.end() - 1) + (last == '0' ? '1' : '0')
+            + url.substring(signature.end());
+
+        assertRejects(403, "SignatureDoesNotMatch", tampered);
+    }
+
+    @Test
+    void rejectsWrongRegion() throws IOException
+    {
+        String url = signed(bucketUsEast2, "test-key.txt")
+            .withEndpoint("s3.us-east-2.amazonaws.com", "us-east-1")
+            .toString();
+
+        assertRejects(400, "AuthorizationQueryParametersError", url);
+    }
+
     private static void upload(String bucket, String region)
     {
         AmazonS3 s3 = AmazonS3ClientBuilder.standard()
@@ -151,6 +192,13 @@ class S3UrlBuilderLiveTest
         Response response = get(url);
         assertEquals(200, response.status, withoutQuery(url) + " -> " + response);
         assertEquals(key, response.body, withoutQuery(url));
+    }
+
+    private static void assertRejects(int status, String code, String url) throws IOException
+    {
+        Response response = get(url);
+        assertEquals(status, response.status, withoutQuery(url) + " -> " + response);
+        assertTrue(response.body.contains("<Code>" + code + "</Code>"), withoutQuery(url) + " -> " + response);
     }
 
     /**
