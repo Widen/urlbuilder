@@ -451,12 +451,36 @@ public class UrlBuilder {
     }
 
     /**
-     * Splits an object key into path segments for {@link #withExactPathSegments(List)}, dropping leading
-     * slashes and keeping every other slash.
+     * Splits an object key into path segments for {@link #withExactPathSegments(List)} the way the AWS SDKs write
+     * it, after dropping leading slashes: the first slash of a run separates segments, and the rest belong to the
+     * next segment, which encodes them as %2F, so {@code a///b} becomes {@code a/%2F%2Fb}. Raw {@code //} in a path
+     * would change the key behind an HTTP client or proxy that merges slashes.
      */
     static List<String> objectKeySegments(String key) {
         String stripped = stripLeadingSlashes(key);
-        return stripped.isEmpty() ? Collections.emptyList() : Arrays.asList(stripped.split("/", -1));
+        List<String> segments = new ArrayList<>();
+        if (stripped.isEmpty()) {
+            return segments;
+        }
+
+        StringBuilder segment = new StringBuilder();
+        for (int i = 0; i < stripped.length(); i++) {
+            char c = stripped.charAt(i);
+            if (c != '/') {
+                segment.append(c);
+                continue;
+            }
+
+            segments.add(segment.toString());
+            segment.setLength(0);
+            while (i + 1 < stripped.length() && stripped.charAt(i + 1) == '/') {
+                segment.append('/');
+                i++;
+            }
+        }
+        segments.add(segment.toString());
+
+        return segments;
     }
 
     private List<String> makePathSegments(String in, boolean decodeSegments) {
