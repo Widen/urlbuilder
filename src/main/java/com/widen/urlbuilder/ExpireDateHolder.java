@@ -1,5 +1,6 @@
 package com.widen.urlbuilder;
 
+import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.TimeUnit;
@@ -29,9 +30,18 @@ class ExpireDateHolder
     void expireIn(long duration, TimeUnit unit)
     {
         InternalUtils.checkNotNull(unit, "unit");
+        if (duration <= 0)
+        {
+            throw new IllegalArgumentException("duration must be positive");
+        }
 
         // Converted through whole seconds: TimeUnit.toNanos stops at Long.MAX_VALUE nanoseconds, about 292 years.
         long seconds = unit.toSeconds(duration);
+        if (seconds == Long.MAX_VALUE)
+        {
+            // TimeUnit saturates instead of overflowing, and Long.MAX_VALUE seconds is past Instant.MAX anyway
+            throw new IllegalArgumentException("duration is too long: " + duration + " " + unit);
+        }
         long remainder = duration - unit.convert(seconds, TimeUnit.SECONDS);
         expireIn(Duration.ofSeconds(seconds, unit.toNanos(remainder)));
     }
@@ -54,6 +64,16 @@ class ExpireDateHolder
      */
     Instant getExpireDate()
     {
+        return getExpireDate(Instant.now());
+    }
+
+    /**
+     * @param now the moment a duration counts from
+     * @return the expiry, computed from {@code now} when it is a duration, or null when no expiry is set
+     * @throws IllegalArgumentException if {@code now} plus the duration is past {@link Instant#MAX}
+     */
+    Instant getExpireDate(Instant now)
+    {
         if (instant != null)
         {
             return instant;
@@ -64,6 +84,13 @@ class ExpireDateHolder
             return null;
         }
 
-        return Instant.now().plus(duration);
+        try
+        {
+            return now.plus(duration);
+        }
+        catch (ArithmeticException | DateTimeException e)
+        {
+            throw new IllegalArgumentException("expiration is past " + Instant.MAX + ": " + duration, e);
+        }
     }
 }

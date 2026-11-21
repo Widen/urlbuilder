@@ -95,7 +95,8 @@ public class UrlBuilder {
      * <p>
      * {@link java.net.URL} is used to parse the input. The resulting builder
      * will be set to {@link GenerationMode#FULLY_QUALIFIED} mode. Percent-encoded
-     * sequences in the path and query string are decoded. A path that ends with a slash
+     * sequences in the path and query string are decoded, and a {@code +} in the query string is read as a
+     * space. A path that ends with a slash
      * keeps it, as {@link #includeTrailingSlash()} does; empty segments such as the
      * one in {@code /a//b} are dropped.
      *
@@ -117,10 +118,10 @@ public class UrlBuilder {
             for (String pair : pairs) {
                 String[] keyValue = pair.split("=", 2);
                 if (keyValue.length == 2) {
-                    addParameter(queryEncoder.decode(keyValue[0]), queryEncoder.decode(keyValue[1]));
+                    addParameter(decodeQueryComponent(keyValue[0]), decodeQueryComponent(keyValue[1]));
                 }
                 else if (keyValue.length == 1) {
-                    addParameter(queryEncoder.decode(keyValue[0]), "");
+                    addParameter(decodeQueryComponent(keyValue[0]), "");
                 }
             }
         }
@@ -128,6 +129,14 @@ public class UrlBuilder {
         withFragment(url.getRef());
 
         mode = GenerationMode.FULLY_QUALIFIED;
+    }
+
+    /**
+     * Reads a "+" as a space, as HTML forms write it and servers read it, so the URL keeps its meaning when the
+     * builder writes it back.
+     */
+    private String decodeQueryComponent(String text) {
+        return queryEncoder.decode(text.replace('+', ' '));
     }
 
     private URL parseUrlInput(String spec) {
