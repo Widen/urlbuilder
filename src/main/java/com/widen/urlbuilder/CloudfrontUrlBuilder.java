@@ -167,8 +167,9 @@ public class CloudfrontUrlBuilder
      * Adds a custom query parameter to the URL.
      * 
      * <p>Custom parameters are included in the signed URL and will be part of the
-     * signature calculation.
-     * 
+     * signature calculation. Adding a name again replaces its value, unlike
+     * {@link UrlBuilder#addParameter(String, Object)}, which keeps both.
+     *
      * @param key The parameter name
      * @param value The parameter value, or null to add the name alone
      * @return This builder for method chaining

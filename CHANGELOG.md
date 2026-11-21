@@ -56,13 +56,20 @@ CloudFront builders. Some URLs differ from the ones version 2 produced, so read 
 3. **Expect unencoded text from `getPath()` and `getPathSegments()`.** They returned percent-encoded text in 2.x.
 4. **Check code that parses a URL and writes it back.** `new UrlBuilder(String)` now decodes the path, so `/a%20b` stays
    `/a%20b`. In 2.x it became `/a%2520b`.
-5. **Check code that calls both `expireIn` and `expireAt`.** The later call now wins. In 2.x `expireAt` always won.
-6. **Check code that passes zero, a negative number, or null as an expiration.** `expireIn` now throws
+5. **Check code that adds a parameter whose value is only whitespace.** `addParameter("q", " ")` now writes `q=%20`. In
+   2.x it wrote `q` alone, as a null or empty value still does.
+6. **Check code that calls both `expireIn` and `expireAt`.** The later call now wins. In 2.x `expireAt` always won.
+7. **Check code that passes zero, a negative number, or null as an expiration.** `expireIn` now throws
    `IllegalArgumentException` for a zero or negative duration, and `expireAt` throws it for null. In 2.x
    `S3UrlBuilder.expireIn(0, unit)` produced an unsigned URL, and `expireAt(null)` cleared the expiration.
-7. **Move from `expireAt(Date)` to `expireAt(Instant)`.** The `Date` overload still works and is deprecated.
-8. **Update any rule that names the BouncyCastle artifacts.** The library now depends on `bcprov-jdk18on` and
-   `bcpkix-jdk18on` 1.87, where 2.x depended on `bcprov-jdk15to18` and `bcpkix-jdk15to18` 1.80.
+8. **Move from `expireAt(Date)` to `expireAt(Instant)`.** The `Date` overload still works and is deprecated.
+9. **Check code that pairs a scheme with port 80 or 443, or reads `getPort()`.** The port now wins over the scheme:
+   `https://host:80/` parses as `http://host/`, and `setPort(80)` turns HTTPS off. A `usingSsl(boolean)` call after
+   the port keeps the port, so `new UrlBuilder("host", 80, "a").usingSsl()` writes `https://host:80/a` where 2.x
+   wrote `https://host/a`. `new UrlBuilder(hostname, path)` sets no port, so its `getPort()` returns 0 where 2.x
+   returned 80.
+10. **Update any rule that names the BouncyCastle artifacts.** The library now depends on `bcprov-jdk18on` and
+    `bcpkix-jdk18on` 1.87, where 2.x depended on `bcprov-jdk15to18` and `bcpkix-jdk15to18` 1.80.
 
 ### Added
 
@@ -82,6 +89,8 @@ CloudFront builders. Some URLs differ from the ones version 2 produced, so read 
 - Path segments and query parameters are encoded by RFC 3986, with separate rules for each.
 - The builder encodes the path when it writes the URL, so `getPath()` and `getPathSegments()` return unencoded text.
 - `new UrlBuilder(String)` decodes the path of the URL it parses.
+- A parameter value of only whitespace is written, as in `q=%20`. A null or empty value still writes the name alone.
+- Port 80 turns HTTPS off, as port 443 turns it on, and `new UrlBuilder(hostname, path)` sets no port.
 - `expireIn` and `expireAt` replace each other, so the later call sets the expiration.
 - `expireIn` rejects a zero or negative duration, and `expireAt` rejects null.
 - `toURL()` wraps a `MalformedURLException` in a `RuntimeException`.
@@ -110,6 +119,8 @@ CloudFront builders. Some URLs differ from the ones version 2 produced, so read 
 - `new UrlBuilder(String)` mishandled a query value that contains `=`. It removed trailing `=` characters, so
   `?sig=abc==` parsed as `abc`, and it dropped the whole parameter for a value such as `?a=b=c`.
 - `new UrlBuilder(String)` encoded an already encoded path a second time.
+- `UrlBuilder` left port 80 out of an `https` URL and port 443 out of an `http` URL, so the URL named the wrong port.
+  `SigningContext.getPort()` returned null for those ports as well.
 
 ### Security
 

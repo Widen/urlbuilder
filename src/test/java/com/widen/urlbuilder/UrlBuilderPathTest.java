@@ -15,7 +15,11 @@ package com.widen.urlbuilder;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Tests for URL path segment handling.
@@ -231,5 +235,26 @@ class UrlBuilderPathTest
         // Path: @ not encoded (NoEncodingEncoder)
         // Query: @ still encoded (default QueryParameterEncoder)
         assertEquals("http://my.host.com/test@path?email=test%40query", url);
+    }
+
+    @Test
+    void replacesPathWithEncodedPath()
+    {
+        UrlBuilder builder = new UrlBuilder("my.host.com", "old/path").withPathEncoded("/a%20b/c%2Fd");
+
+        assertEquals(Arrays.asList("a b", "c/d"), builder.getPathSegments());
+        assertEquals("http://my.host.com/a%20b/c%2Fd", builder.toString());
+    }
+
+    @Test
+    void pathSegmentsAreReadOnlyViewOfPath()
+    {
+        UrlBuilder builder = new UrlBuilder("my.host.com", "a");
+        List<String> segments = builder.getPathSegments();
+
+        builder.addPathSegment("b");
+
+        assertEquals(Arrays.asList("a", "b"), segments);
+        assertThrows(UnsupportedOperationException.class, () -> segments.add("c"));
     }
 }

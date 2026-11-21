@@ -15,7 +15,10 @@ package com.widen.urlbuilder;
 
 import org.junit.jupiter.api.Test;
 
+import java.net.URI;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Integration tests demonstrating typical UrlBuilder usage patterns.
@@ -55,5 +58,53 @@ class UrlBuilderTest
     {
         String url = new UrlBuilder("my.host.com", "foo/bar/baz.html").withFragment("chapter/1").toString();
         assertEquals("http://my.host.com/foo/bar/baz.html#chapter/1", url);
+    }
+
+    @Test
+    void convertsToUriAndUrl() throws Exception
+    {
+        UrlBuilder builder = new UrlBuilder("my.host.com", "a b").usingSsl().addParameter("q", "x&y");
+
+        assertEquals(new URI("https://my.host.com/a%20b?q=x%26y"), builder.toURI());
+        assertEquals("https://my.host.com/a%20b?q=x%26y", builder.toURL().toString());
+    }
+
+    @Test
+    void rejectsRelativeUrlInToUrl()
+    {
+        UrlBuilder builder = new UrlBuilder("my.host.com", "foo").modeHostnameRelative();
+
+        assertThrows(IllegalArgumentException.class, builder::toURL);
+    }
+
+    @Test
+    void writesDocumentedReadmeExamples()
+    {
+        String url = new UrlBuilder("files.example.com", "/reports/2024/")
+            .usingSsl()
+            .addPathSegment("Q3 summary #2.pdf")
+            .addParameter("q", "cats & dogs")
+            .addParameter("page", 2)
+            .toString();
+        assertEquals("https://files.example.com/reports/2024/Q3%20summary%20%232.pdf?q=cats%20%26%20dogs&page=2", url);
+
+        String prefixed = new UrlBuilder("my.host.com", "users/42")
+            .addPrefixedPathSegment("api/v2")
+            .includeTrailingSlash()
+            .toString();
+        assertEquals("http://my.host.com/api/v2/users/42/", prefixed);
+    }
+
+    @Test
+    void writesDocumentedChangelogEncodingExamples()
+    {
+        String current = new UrlBuilder("my.host.com", "a b+c@d").addParameter("q", "x y*z~").toString();
+        assertEquals("http://my.host.com/a%20b+c@d?q=x%20y%2Az~", current);
+
+        String legacy = new UrlBuilder("my.host.com", "a b+c@d")
+            .usingLegacyEncoding()
+            .addParameter("q", "x y*z~")
+            .toString();
+        assertEquals("http://my.host.com/a%20b%2Bc%40d?q=x%20y*z%7E", legacy);
     }
 }
