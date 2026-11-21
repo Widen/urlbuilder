@@ -426,7 +426,7 @@ public class S3UrlBuilder
      */
     public S3UrlBuilder withKey(String key)
     {
-        String stripped = UrlBuilder.stripLeadingSlashes(key);
+        String stripped = AwsUrls.stripLeadingSlashes(key);
         // A key of only slashes would sign the bucket root, which lists the bucket
         InternalUtils.checkNotBlank(stripped, "key");
 
@@ -510,7 +510,7 @@ public class S3UrlBuilder
             builder.modeFullyQualified();
         }
 
-        List<String> keySegments = UrlBuilder.objectKeySegments(key);
+        List<String> keySegments = AwsUrls.objectKeySegments(key);
 
         // AWS signature V2 signs the path exactly as the request sends it, encoded
         String canonicalResource;
@@ -522,14 +522,14 @@ public class S3UrlBuilder
             pathSegments.add(bucket);
             pathSegments.addAll(keySegments);
 
-            builder.withHostname(UrlBuilder.hostAsClientsSendIt(endpoint, ssl));
+            builder.withHostname(AwsUrls.hostAsClientsSendIt(endpoint, ssl));
             canonicalResource = builder.withExactPathSegments(pathSegments).buildPath();
         }
         else
         {
             pathSegments = keySegments;
             String host = BucketEncoding.VIRTUAL_DNS.equals(requestedBucketEncoding) ? bucket : bucket + "." + endpoint;
-            builder.withHostname(UrlBuilder.hostAsClientsSendIt(host, ssl));
+            builder.withHostname(AwsUrls.hostAsClientsSendIt(host, ssl));
             canonicalResource = "/" + bucket + builder.withExactPathSegments(keySegments).buildPath();
         }
 

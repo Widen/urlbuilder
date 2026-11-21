@@ -143,7 +143,7 @@ public class CloudfrontUrlBuilder
     public CloudfrontUrlBuilder withKey(String key)
     {
         // A key of only slashes would sign the distribution root
-        InternalUtils.checkNotBlank(UrlBuilder.stripLeadingSlashes(key), "key");
+        InternalUtils.checkNotBlank(AwsUrls.stripLeadingSlashes(key), "key");
         this.key = key;
         return this;
     }
@@ -327,8 +327,8 @@ public class CloudfrontUrlBuilder
         UrlBuilder builder = new UrlBuilder().usingPathEncoder(new QueryParameterEncoder());
 
         // CloudFront rebuilds the signed resource from the request, so sign the host as the client sends it
-        builder.withHostname(UrlBuilder.hostAsClientsSendIt(distributionHostname, ssl));
-        builder.withExactPathSegments(UrlBuilder.objectKeySegments(key));
+        builder.withHostname(AwsUrls.hostAsClientsSendIt(distributionHostname, ssl));
+        builder.withExactPathSegments(AwsUrls.objectKeySegments(key));
         builder.usingSsl(ssl);
         builder.addParameters(parameters);
         builder.modeFullyQualified();
