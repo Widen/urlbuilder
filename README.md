@@ -262,7 +262,9 @@ builder.isSslEnabled()        // true
 ```
 
 The constructor decodes percent-encoded text in the path and the query string, so the getters return plain text. It
-throws `UrlBuilder.NonParsableUrl` for a string that `java.net.URL` cannot parse.
+reads a `+` in the query string as a space, as HTML forms write it and servers read it, so `?q=a+b` is written back as
+`?q=a%20b`. A `+` in the path stays a plus. It throws `UrlBuilder.NonParsableUrl` for a string that `java.net.URL`
+cannot parse.
 
 ## Relative URLs
 
@@ -373,7 +375,7 @@ The details:
   deprecated opt-in to Signature Version 2 for buckets and S3-compatible services that still accept it; it needs no
   region and accepts any expiration.
 * **Response headers:** `withAttachmentFilename` sets the `Content-Disposition` header that makes a browser download the
-  file, and it requires a signed URL. `withContentType` sets the `Content-Type` header.
+  file, and `withContentType` sets the `Content-Type` header. Both require a signed URL.
 * **Endpoint:** `inRegion("us-west-2")` selects a regional endpoint, and `withEndpoint(endpoint, region)` names any
   S3-compatible service and the region it signs for. `withEndpoint(endpoint)` clears the region.
 * **Bucket placement:** the bucket goes in the hostname by default. The table lists all three placements.
