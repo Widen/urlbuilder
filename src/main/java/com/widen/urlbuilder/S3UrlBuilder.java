@@ -31,6 +31,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
@@ -94,6 +95,9 @@ import javax.crypto.spec.SecretKeySpec;
  * for an expiration outside that range. {@link #usingSignatureVersion2()} signs with the deprecated Signature
  * Version 2 instead, which needs no region.
  *
+ * <p>Once a builder is configured, concurrent calls to {@link #toString()} are safe.
+ * The configuration methods are not synchronized.
+ *
  * @see <a href="https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html">Authenticating
  * Requests: Using Query Parameters (AWS Signature Version 4)</a>
  * @see <a href="https://docs.aws.amazon.com/AmazonS3/latest/dev/RESTAuthentication.html">S3 REST Authentication</a>
@@ -128,6 +132,12 @@ public class S3UrlBuilder
 
     private Clock clock = Clock.systemUTC();
 
+    private boolean ssl;
+
+    private String fragment;
+
+    private boolean protocolRelative;
+
     private static final long MAX_SIGV4_EXPIRES_SECONDS = Duration.ofDays(7).getSeconds();
 
     private static final DateTimeFormatter SIGV4_TIMESTAMP =
@@ -135,9 +145,6 @@ public class S3UrlBuilder
 
     private static final DateTimeFormatter SIGV4_DATE =
         DateTimeFormatter.ofPattern("yyyyMMdd", Locale.ROOT).withZone(ZoneOffset.UTC);
-
-    // S3 reads "+" in a path as a space, so encode keys as the AWS SDKs do: everything but A-Z a-z 0-9 - . _ ~
-    private final UrlBuilder builder = new UrlBuilder().usingPathEncoder(new QueryParameterEncoder());
 
     /**
      * Enumeration of bucket encoding strategies for S3 URLs.
@@ -164,8 +171,6 @@ public class S3UrlBuilder
         withBucket(bucket);
 
         withKey(key);
-
-        builder.modeFullyQualified();
     }
 
     /**
@@ -250,7 +255,7 @@ public class S3UrlBuilder
      * 
      * <p>Credentials are required when generating pre-authenticated URLs with an expiration time.
      * A Signature Version 4 URL also needs the bucket's region: without one, {@link #toString()} throws
-     * {@link IllegalStateException}.
+     * {@link IllegalStateException}. Clears the session token an earlier call set.
      *
      * @param awsKey The AWS access key ID
      * @param awsPrivateKey The AWS secret access key
@@ -264,6 +269,7 @@ public class S3UrlBuilder
 
         this.awsKey = awsKey;
         this.awsPrivateKey = awsPrivateKey;
+        this.awsSessionToken = null;
 
         return this;
     }
@@ -283,8 +289,8 @@ public class S3UrlBuilder
      */
     public S3UrlBuilder usingCredentials(String awsKey, String awsPrivateKey, String awsSessionToken)
     {
-        usingCredentials(awsKey, awsPrivateKey);
         InternalUtils.checkNotNull(awsSessionToken, "awsSessionToken");
+        usingCredentials(awsKey, awsPrivateKey);
 
         this.awsSessionToken = awsSessionToken;
         return this;
@@ -365,13 +371,13 @@ public class S3UrlBuilder
      *
      * @param region AWS region identifier (e.g., "us-east-1", "eu-west-1")
      * @return This builder for method chaining
-     * @throws IllegalArgumentException if region is null
+     * @throws IllegalArgumentException if region is null or blank
      * @see <a href="http://docs.amazonwebservices.com/AmazonS3/latest/dev/LocationSelection.html">S3 Location Selection Docs</a>
      * @see <a href="https://docs.aws.amazon.com/general/latest/gr/rande.html#s3_region">AWS Endpoint Docs</a>
      */
     public S3UrlBuilder inRegion(String region)
     {
-        InternalUtils.checkNotNull(region, "region");
+        InternalUtils.checkNotBlank(region, "region");
         endpoint = "s3." + region + ".amazonaws.com";
         this.region = region;
         return this;
@@ -405,13 +411,15 @@ public class S3UrlBuilder
      *
      * @param key S3 object key
      * @return This builder for method chaining
-     * @throws IllegalArgumentException if key is blank
+     * @throws IllegalArgumentException if key is blank or only slashes
      */
     public S3UrlBuilder withKey(String key)
     {
-        InternalUtils.checkNotBlank(key, "key");
+        String stripped = UrlBuilder.stripLeadingSlashes(key);
+        // A key of only slashes would sign the bucket root, which lists the bucket
+        InternalUtils.checkNotBlank(stripped, "key");
 
-        this.key = UrlBuilder.stripLeadingSlashes(key);
+        this.key = stripped;
 
         return this;
     }
@@ -472,58 +480,83 @@ public class S3UrlBuilder
      */
     public String toString()
     {
+        // A builder per call keeps concurrent calls from sharing parameters. S3 reads "+" in a path as a space, so
+        // encode keys as the AWS SDKs do: everything but A-Z a-z 0-9 - . _ ~
+        UrlBuilder builder = new UrlBuilder()
+            .usingPathEncoder(new QueryParameterEncoder())
+            .usingSsl(ssl)
+            .withFragment(fragment);
+        if (protocolRelative)
+        {
+            builder.modeProtocolRelative();
+        }
+        else
+        {
+            builder.modeFullyQualified();
+        }
+
         List<String> keySegments = keySegments(key);
 
         // AWS signature V2 signs the path exactly as the request sends it, encoded
         String canonicalResource;
+        List<String> pathSegments;
 
         if (!isValidDnsBucketName() || BucketEncoding.PATH.equals(requestedBucketEncoding))
         {
-            List<String> pathSegments = new ArrayList<>();
+            pathSegments = new ArrayList<>();
             pathSegments.add(bucket);
             pathSegments.addAll(keySegments);
 
-            builder.withHostname(endpoint);
+            builder.withHostname(hostAsClientsSendIt(endpoint));
             canonicalResource = builder.withExactPathSegments(pathSegments).buildPath();
         }
         else
         {
-            builder.withHostname(BucketEncoding.VIRTUAL_DNS.equals(requestedBucketEncoding) ? bucket : bucket + "." + endpoint);
+            pathSegments = keySegments;
+            String host = BucketEncoding.VIRTUAL_DNS.equals(requestedBucketEncoding) ? bucket : bucket + "." + endpoint;
+            builder.withHostname(hostAsClientsSendIt(host));
             canonicalResource = "/" + bucket + builder.withExactPathSegments(keySegments).buildPath();
         }
 
-        try
+        if (StringUtilsInternal.isNotBlank(attachmentFilename))
         {
-            if (StringUtilsInternal.isNotBlank(attachmentFilename))
-            {
-                canSign();
+            canSign();
 
-                builder.addParameter("response-content-disposition", HttpUtils.createContentDispositionHeader("attachment", attachmentFilename));
-            }
-
-            if(StringUtilsInternal.isNotBlank(contentType))
-            {
-                builder.addParameter("response-content-type", contentType);
-            }
-
-            if (expireDate.isSet())
-            {
-                canSign();
-                Instant signingTime = clock.instant();
-                Instant expireInstant = expireDate.getExpireDate(signingTime);
-                InternalUtils.checkNotNull(expireInstant, "expire instant");
-                Map<String, String> params = signatureVersion2
-                    ? signParams(expireInstant, canonicalResource, builder)
-                    : signV4Params(signingTime, expireInstant, builder);
-                builder.addParameters(params);
-            }
-
-            return builder.toString();
+            builder.addParameter("response-content-disposition", HttpUtils.createContentDispositionHeader("attachment", attachmentFilename));
         }
-        finally
+
+        if(StringUtilsInternal.isNotBlank(contentType))
         {
-            builder.clearParameters(); //clean for any subsequent calls to toString()
+            // S3 rejects response header overrides on an anonymous request
+            canSign();
+
+            builder.addParameter("response-content-type", contentType);
         }
+
+        if (expireDate.isSet())
+        {
+            canSign();
+            Instant signingTime = clock.instant();
+            Instant expireInstant = expireDate.getExpireDate(signingTime);
+            InternalUtils.checkNotNull(expireInstant, "expire instant");
+            Map<String, String> params = signatureVersion2
+                ? signParams(expireInstant, canonicalResource, builder)
+                : signV4Params(signingTime, expireInstant, pathSegments, builder);
+            builder.addParameters(params);
+        }
+
+        return builder.toString();
+    }
+
+    /**
+     * HTTP clients send the host in lower case and leave the default port of the scheme out of the Host header. Some,
+     * such as Go's, send the host exactly as the URL writes it, so the URL writes it that way too, and SigV4 signs it.
+     */
+    private String hostAsClientsSendIt(String host)
+    {
+        String lowerCase = host.toLowerCase(Locale.ROOT);
+        String defaultPort = ssl ? ":443" : ":80";
+        return lowerCase.endsWith(defaultPort) ? lowerCase.substring(0, lowerCase.length() - defaultPort.length()) : lowerCase;
     }
 
     /**
@@ -591,7 +624,7 @@ public class S3UrlBuilder
      */
     public S3UrlBuilder usingSsl()
     {
-        builder.usingSsl();
+        ssl = true;
 
         return this;
     }
@@ -604,7 +637,7 @@ public class S3UrlBuilder
      */
     public S3UrlBuilder usingSsl(boolean useSsl)
     {
-        builder.usingSsl(useSsl);
+        ssl = useSsl;
 
         return this;
     }
@@ -617,7 +650,10 @@ public class S3UrlBuilder
      */
     public S3UrlBuilder withFragment(String fragment)
     {
-        builder.withFragment(fragment);
+        if (StringUtilsInternal.isNotBlank(fragment))
+        {
+            this.fragment = fragment;
+        }
 
         return this;
     }
@@ -628,7 +664,7 @@ public class S3UrlBuilder
      */
     public S3UrlBuilder modeProtocolRelative()
     {
-        builder.modeProtocolRelative();
+        protocolRelative = true;
 
         return this;
     }
@@ -641,7 +677,7 @@ public class S3UrlBuilder
      */
     public S3UrlBuilder modeFullyQualified()
     {
-        builder.modeFullyQualified();
+        protocolRelative = false;
 
         return this;
     }
@@ -651,8 +687,9 @@ public class S3UrlBuilder
      * 
      * <p>When set, S3 will include a {@code response-content-type} parameter that
      * instructs S3 to return the specified Content-Type header in the response,
-     * overriding the object's stored content type.
-     * 
+     * overriding the object's stored content type. S3 accepts the parameter only on a signed URL, so
+     * {@link #toString()} throws {@link IllegalStateException} without an expiration and credentials.
+     *
      * @param contentType The MIME type for the response (e.g., "application/pdf")
      * @return This builder for method chaining
      */
@@ -747,13 +784,15 @@ public class S3UrlBuilder
      *
      * @param signingTime the moment the URL is signed, written as {@code X-Amz-Date}
      * @param expireTime the expiration, from which {@code X-Amz-Expires} counts whole seconds after signingTime
-     * @param builder the URL builder whose hostname, path, and query parameters the signature covers
+     * @param pathSegments the unencoded path segments the URL writes
+     * @param builder the URL builder whose hostname and query parameters the signature covers
      * @throws IllegalStateException if no region is set
      * @throws IllegalArgumentException if the URL expires less than 1 second or more than 7 days after signingTime
      * @see <a href="https://docs.aws.amazon.com/AmazonS3/latest/API/sigv4-query-string-auth.html">Authenticating
      * Requests: Using Query Parameters (AWS Signature Version 4)</a>
      */
-    private Map<String, String> signV4Params(Instant signingTime, Instant expireTime, UrlBuilder builder)
+    private Map<String, String> signV4Params(Instant signingTime, Instant expireTime, List<String> pathSegments,
+        UrlBuilder builder)
     {
         if (StringUtilsInternal.isBlank(region))
         {
@@ -761,7 +800,8 @@ public class S3UrlBuilder
                 + "call inRegion(region) or withEndpoint(endpoint, region).");
         }
 
-        long expiresSeconds = Duration.between(signingTime, expireTime).getSeconds();
+        // S3 counts X-Amz-Expires from X-Amz-Date, which drops the fraction of a second
+        long expiresSeconds = expireTime.getEpochSecond() - signingTime.getEpochSecond();
         if (expiresSeconds < 1 || expiresSeconds > MAX_SIGV4_EXPIRES_SECONDS)
         {
             throw new IllegalArgumentException("A Signature Version 4 URL must expire from 1 second to 7 days after it is "
@@ -783,13 +823,10 @@ public class S3UrlBuilder
         }
         params.put("X-Amz-SignedHeaders", "host");
 
-        // S3 decodes the path before it signs it, so the %2F that keeps a run of slashes apart signs as a slash
-        String canonicalUri = builder.buildPath().replace("%2F", "/");
-
         String canonicalRequest = "GET\n"
-            + canonicalUri + "\n"
+            + canonicalUri(pathSegments) + "\n"
             + canonicalQueryString(builder.queryParams, params) + "\n"
-            + "host:" + canonicalHost(builder) + "\n"
+            + "host:" + builder.getHostname() + "\n"
             + "\n"
             + "host\n"
             + "UNSIGNED-PAYLOAD";
@@ -807,6 +844,21 @@ public class S3UrlBuilder
         params.put("X-Amz-Signature", hex(hmac("HmacSHA256", signingKey, stringToSign)));
 
         return params;
+    }
+
+    /**
+     * S3 decodes the path before it signs it, so every slash signs unencoded, including the {@code %2F} that keeps
+     * a run of slashes apart in the written URL.
+     */
+    private static String canonicalUri(List<String> pathSegments)
+    {
+        Encoder encoder = new QueryParameterEncoder();
+        StringBuilder uri = new StringBuilder();
+        for (String part : String.join("/", pathSegments).split("/", -1))
+        {
+            uri.append('/').append(encoder.encode(part));
+        }
+        return uri.toString();
     }
 
     /**
@@ -835,16 +887,6 @@ public class S3UrlBuilder
             query.append(param.getKey()).append('=').append(param.getValue());
         }
         return query.toString();
-    }
-
-    /**
-     * HTTP clients send the host in lower case and leave the default port of the scheme out of the Host header.
-     */
-    private static String canonicalHost(UrlBuilder builder)
-    {
-        String host = builder.getHostname().toLowerCase(Locale.ROOT);
-        String defaultPort = builder.isSslEnabled() ? ":443" : ":80";
-        return host.endsWith(defaultPort) ? host.substring(0, host.length() - defaultPort.length()) : host;
     }
 
     private static byte[] hmac(String algorithm, byte[] key, String data)
@@ -911,6 +953,7 @@ public class S3UrlBuilder
      */
     private static class AmazonAWSJavaSDKInternal
     {
+        private static final Pattern DNS_BUCKET_CHARACTERS = Pattern.compile("[a-z0-9.-]+");
 
         /**
          * Validates that the specified bucket name is valid for Amazon S3 V2 naming
@@ -954,7 +997,8 @@ public class S3UrlBuilder
                 throw new IllegalArgumentException("Bucket name should not contain '_'");
             }
 
-            if (bucketName.contains("!") || bucketName.contains("@") || bucketName.contains("#"))
+            // The name becomes part of the hostname, so a character such as '/' or '?' would send the URL elsewhere
+            if (!DNS_BUCKET_CHARACTERS.matcher(bucketName).matches())
             {
                 throw new IllegalArgumentException("Bucket name contains illegal characters");
             }
