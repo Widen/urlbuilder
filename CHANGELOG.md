@@ -71,7 +71,8 @@ upgrade notes first.
    percent-encoded text in 2.x. `getKey()` now returns the key as given, without leading slashes.
 5. **Check code that parses a URL and writes it back.** `new UrlBuilder(String)` now decodes the path, so `/a%20b` stays
    `/a%20b`. In 2.x it became `/a%2520b`. A trailing slash now stays as well, so `/foo/` no longer becomes `/foo`.
-   Check S3 keys that end with a slash or contain `//` too: `S3UrlBuilder` now keeps those slashes. A `+` in the query
+   Check S3 and CloudFront keys that end with a slash or contain `//` too: both builders now keep those slashes, and
+   write each slash after the first of a run as `%2F`, so `a//b` becomes `/a/%2Fb`. A `+` in the query
    string still reads as a space, as in 2.x, and is written back as `%20`.
 6. **Check code that adds a parameter whose value is only whitespace.** `addParameter("q", " ")` now writes `q=%20`. In
    2.x it wrote `q` alone, as a null or empty value still does.

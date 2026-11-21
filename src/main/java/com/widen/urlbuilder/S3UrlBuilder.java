@@ -495,7 +495,7 @@ public class S3UrlBuilder
             builder.modeFullyQualified();
         }
 
-        List<String> keySegments = keySegments(key);
+        List<String> keySegments = UrlBuilder.objectKeySegments(key);
 
         // AWS signature V2 signs the path exactly as the request sends it, encoded
         String canonicalResource;
@@ -557,42 +557,6 @@ public class S3UrlBuilder
         String lowerCase = host.toLowerCase(Locale.ROOT);
         String defaultPort = ssl ? ":443" : ":80";
         return lowerCase.endsWith(defaultPort) ? lowerCase.substring(0, lowerCase.length() - defaultPort.length()) : lowerCase;
-    }
-
-    /**
-     * Splits the key into path segments the way the AWS SDKs write it: the first slash of a run separates segments,
-     * and the rest belong to the next segment, which encodes them as %2F, so {@code a///b} becomes
-     * {@code a/%2F%2Fb}. HTTP clients and proxies may merge {@code //}, which would change the key.
-     */
-    private static List<String> keySegments(String key)
-    {
-        List<String> segments = new ArrayList<>();
-        if (key.isEmpty())
-        {
-            return segments;
-        }
-
-        StringBuilder segment = new StringBuilder();
-        for (int i = 0; i < key.length(); i++)
-        {
-            char c = key.charAt(i);
-            if (c != '/')
-            {
-                segment.append(c);
-                continue;
-            }
-
-            segments.add(segment.toString());
-            segment.setLength(0);
-            while (i + 1 < key.length() && key.charAt(i + 1) == '/')
-            {
-                segment.append('/');
-                i++;
-            }
-        }
-        segments.add(segment.toString());
-
-        return segments;
     }
 
     private void canSign()

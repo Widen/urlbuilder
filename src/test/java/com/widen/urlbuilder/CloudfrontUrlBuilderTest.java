@@ -54,7 +54,8 @@ class CloudfrontUrlBuilderTest
     @ParameterizedTest
     @CsvSource({
         "/folder/, http://dnnfhn216qiqy.cloudfront.net/folder/?Expires=",
-        "a//b,     http://dnnfhn216qiqy.cloudfront.net/a//b?Expires=",
+        "a//b,     http://dnnfhn216qiqy.cloudfront.net/a/%2Fb?Expires=",
+        "/a///b//, http://dnnfhn216qiqy.cloudfront.net/a/%2F%2Fb/%2F?Expires=",
         "a+b @c:d(1)*~.pdf, http://dnnfhn216qiqy.cloudfront.net/a%2Bb%20%40c%3Ad%281%29%2A~.pdf?Expires="
     })
     void encodesKeyAndKeepsItsSlashes(String key, String expectedPrefix)
