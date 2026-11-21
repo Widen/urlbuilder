@@ -130,6 +130,23 @@ class UrlBuilderParsingTest
 
     @ParameterizedTest
     @CsvSource({
+        "http://my.host.com/a+b?q=a+b,      http://my.host.com/a+b?q=a%20b",
+        "http://my.host.com/a?q=a%2Bb,      http://my.host.com/a?q=a%2Bb",
+        "http://my.host.com/a?x+y=1,        http://my.host.com/a?x%20y=1"
+    })
+    void readsPlusInQueryAsSpace(String spec, String expected)
+    {
+        assertEquals(expected, new UrlBuilder(spec).toString());
+    }
+
+    @Test
+    void legacyEncodingWritesParsedPlusAs2xDid()
+    {
+        assertEquals("http://my.host.com/a?q=a%20b", new UrlBuilder("http://my.host.com/a?q=a+b").usingLegacyEncoding().toString());
+    }
+
+    @ParameterizedTest
+    @CsvSource({
         "http://my.host.com/a?,       http://my.host.com/a",
         "http://my.host.com/a?&,      http://my.host.com/a",
         "http://my.host.com/a?=v,     http://my.host.com/a",
