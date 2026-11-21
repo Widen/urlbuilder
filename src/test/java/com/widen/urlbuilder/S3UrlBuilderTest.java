@@ -19,6 +19,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -278,6 +279,42 @@ class S3UrlBuilderTest
         String url = new S3UrlBuilder("My_Bucket", "a.txt").usingBucketVirtualHost().toString();
 
         assertEquals("http://s3.amazonaws.com/My_Bucket/a.txt", url);
+    }
+
+    @Test
+    void testBucketNameWithUrlCharactersGoesInPath()
+    {
+        String url = new S3UrlBuilder("evil.example/x?", "a.txt").toString();
+
+        assertEquals("http://s3.amazonaws.com/evil.example%2Fx%3F/a.txt", url);
+    }
+
+    @Test
+    void testKeyOfOnlySlashesThrows()
+    {
+        assertThrows(IllegalArgumentException.class, () -> new S3UrlBuilder("bucketuno", "/"));
+        assertThrows(IllegalArgumentException.class, () -> new S3UrlBuilder("bucketuno", "a.txt").withKey("///"));
+    }
+
+    @Test
+    void testUnsignedContentTypeThrows()
+    {
+        S3UrlBuilder builder = new S3UrlBuilder("bucketuno", "a.txt").withContentType("text/plain");
+
+        assertThrows(IllegalStateException.class, builder::toString);
+    }
+
+    @Test
+    void testCredentialsWithoutTokenClearEarlierToken()
+    {
+        String url = new S3UrlBuilder("test-bucket", "test-key.txt")
+            .expireAt(Instant.ofEpochSecond(1522540800L))
+            .usingSignatureVersion2()
+            .usingCredentials("ASIAIOSFODNN7EXAMPLE", "temporary-secret", "session-token")
+            .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY")
+            .toString();
+
+        assertNull(extractParameter(url, "x-amz-security-token"), url);
     }
 
     private static String hmacSha1(String stringToSign, String secretKey) throws Exception
@@ -656,6 +693,19 @@ class S3UrlBuilderTest
             assertThrows(IllegalArgumentException.class, () -> builder.expireIn(Duration.ofHours(-1)));
             assertThrows(IllegalArgumentException.class, () -> builder.expireIn(0, TimeUnit.HOURS));
             assertThrows(IllegalArgumentException.class, () -> builder.expireIn(-1, TimeUnit.HOURS));
+        }
+
+        @Test
+        void testExpirationPastInstantMaxThrowsIllegalArgument()
+        {
+            S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "test-key.txt")
+                .usingSignatureVersion2()
+                .usingCredentials("AKIAIOSFODNN7EXAMPLE", "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY");
+
+            assertThrows(IllegalArgumentException.class, () -> builder.expireIn(Long.MAX_VALUE, TimeUnit.DAYS));
+            assertThrows(IllegalArgumentException.class, () -> builder.expireIn(Long.MAX_VALUE, TimeUnit.SECONDS));
+            assertThrows(IllegalArgumentException.class, builder.expireIn(Duration.ofSeconds(Instant.MAX.getEpochSecond()))::toString);
+            assertThrows(IllegalArgumentException.class, builder.expireIn(Duration.ofSeconds(Long.MAX_VALUE))::toString);
         }
     }
 

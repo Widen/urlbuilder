@@ -5,6 +5,12 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 
@@ -59,11 +65,9 @@ class S3UrlBuilderSigV4Test
             .inRegion("us-west-2")
             .withEndpoint("minio.example.com")
             .expireIn(Duration.ofHours(1));
-        S3UrlBuilder blankRegion = builder().inRegion("").expireIn(Duration.ofHours(1));
 
         assertThrows(IllegalStateException.class, noRegion::toString);
         assertThrows(IllegalStateException.class, regionCleared::toString);
-        assertThrows(IllegalStateException.class, blankRegion::toString);
     }
 
     @Test
@@ -101,19 +105,55 @@ class S3UrlBuilderSigV4Test
     }
 
     /**
-     * HTTP clients leave a default port out of the Host header and send the host in lower case, so the signature
-     * must cover the host as they send it.
+     * HTTP clients leave a default port out of the Host header and send the host in lower case, and some send the
+     * host exactly as the URL writes it, so the URL writes the host as the signature covers it.
      */
     @Test
-    void signsHostAsClientsSendIt()
+    void writesAndSignsHostAsClientsSendIt()
     {
-        String https = signature(builder().withEndpoint("minio.example.com", "eu-west-1"));
-        String http = signature(builder().usingSsl(false).withEndpoint("minio.example.com", "eu-west-1"));
+        S3UrlBuilder https = builder().withEndpoint("minio.example.com", "eu-west-1");
+        S3UrlBuilder http = builder().usingSsl(false).withEndpoint("minio.example.com", "eu-west-1");
+        String expected = https.expireIn(Duration.ofHours(1)).toString();
 
-        assertEquals(https, signature(builder().withEndpoint("minio.example.com:443", "eu-west-1")));
-        assertEquals(http, signature(builder().usingSsl(false).withEndpoint("minio.example.com:80", "eu-west-1")));
-        assertEquals(https, signature(builder().withEndpoint("MinIO.Example.com", "eu-west-1")));
-        assertNotEquals(https, signature(builder().withEndpoint("minio.example.com:9000", "eu-west-1")));
+        assertEquals(expected, builder().withEndpoint("minio.example.com:443", "eu-west-1").expireIn(Duration.ofHours(1)).toString());
+        assertEquals(expected, builder().withEndpoint("MinIO.Example.com", "eu-west-1").expireIn(Duration.ofHours(1)).toString());
+        assertEquals(http.expireIn(Duration.ofHours(1)).toString(),
+            builder().usingSsl(false).withEndpoint("minio.example.com:80", "eu-west-1").expireIn(Duration.ofHours(1)).toString());
+
+        String port9000 = builder().withEndpoint("minio.example.com:9000", "eu-west-1").expireIn(Duration.ofHours(1)).toString();
+        assertTrue(port9000.startsWith("https://examplebucket.minio.example.com:9000/"), port9000);
+        assertNotEquals(parameter(expected, "X-Amz-Signature"), parameter(port9000, "X-Amz-Signature"));
+    }
+
+    @Test
+    void concurrentToStringProducesIdenticalUrls() throws Exception
+    {
+        S3UrlBuilder builder = builder()
+            .inRegion("us-east-1")
+            .withContentType("application/pdf")
+            .withAttachmentFilename("a.pdf")
+            .expireIn(Duration.ofHours(1));
+        String expectedUrl = builder.toString();
+        Callable<String> buildUrl = builder::toString;
+
+        ExecutorService executor = Executors.newFixedThreadPool(8);
+        try
+        {
+            List<Future<String>> urls = new ArrayList<>();
+            for (int i = 0; i < 400; i++)
+            {
+                urls.add(executor.submit(buildUrl));
+            }
+
+            for (Future<String> url : urls)
+            {
+                assertEquals(expectedUrl, url.get());
+            }
+        }
+        finally
+        {
+            executor.shutdownNow();
+        }
     }
 
     @Test
@@ -125,6 +165,15 @@ class S3UrlBuilderSigV4Test
         assertThrows(IllegalArgumentException.class, () -> builder.withEndpoint("minio.example.com", " "));
     }
 
+    @Test
+    void inRegionRejectsBlankRegion()
+    {
+        S3UrlBuilder builder = builder();
+
+        assertThrows(IllegalArgumentException.class, () -> builder.inRegion(""));
+        assertThrows(IllegalArgumentException.class, () -> builder.inRegion(" "));
+    }
+
     static Stream<Arguments> expirations()
     {
         return Stream.of(
@@ -132,7 +181,10 @@ class S3UrlBuilderSigV4Test
             Arguments.of("7 days and 1 second", expiration(b -> b.expireIn(Duration.ofDays(7).plusSeconds(1))), null),
             Arguments.of("500 milliseconds", expiration(b -> b.expireIn(Duration.ofMillis(500))), null),
             Arguments.of("7 days", expiration(b -> b.expireIn(Duration.ofDays(7))), "604800"),
-            Arguments.of("1500 milliseconds", expiration(b -> b.expireIn(Duration.ofMillis(1500))), "1"));
+            Arguments.of("1500 milliseconds", expiration(b -> b.expireIn(Duration.ofMillis(1500))), "1"),
+            Arguments.of("10 seconds after the X-Amz-Date second", expiration(b -> b
+                .usingClock(Clock.fixed(may24.instant().plusMillis(900), ZoneOffset.UTC))
+                .expireAt(may24.instant().plusSeconds(10))), "10"));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -251,11 +303,6 @@ class S3UrlBuilderSigV4Test
             .usingSsl()
             .usingClock(may24)
             .usingCredentials(accessKey, secretKey);
-    }
-
-    private static String signature(S3UrlBuilder builder)
-    {
-        return parameter(builder.expireIn(Duration.ofHours(1)).toString(), "X-Amz-Signature");
     }
 
     private static UnaryOperator<S3UrlBuilder> expiration(UnaryOperator<S3UrlBuilder> expiration)
