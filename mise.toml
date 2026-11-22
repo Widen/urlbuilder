@@ -1,2 +1,10 @@
 [tools]
 java = "corretto-21"
+
+[tasks.live-test]
+description = "Run the S3 live tests: aws-vault exec dev -- mise run live-test"
+run = '''
+URLBUILDER_LIVE_BUCKET_US_EAST_2="${URLBUILDER_LIVE_BUCKET_US_EAST_2:-widen-urlbuilder-live-test-us-east-2}" \
+URLBUILDER_LIVE_BUCKET_US_EAST_1="${URLBUILDER_LIVE_BUCKET_US_EAST_1:-widen-urlbuilder-live-test-us-east-1}" \
+./gradlew liveTest --console=plain
+'''

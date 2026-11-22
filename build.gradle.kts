@@ -61,6 +61,11 @@ tasks.withType<Test>().configureEach {
     }
 }
 
+// Tests tagged "live" call S3 and run only from liveTest.
+tasks.test {
+    useJUnitPlatform { excludeTags("live") }
+}
+
 // The library targets Java 8, but most consumers run it on a newer JVM, where JDK classes such as
 // java.util.regex.Pattern behave differently.
 val testOnJava21 = tasks.register<Test>("testOnJava21") {
@@ -69,6 +74,17 @@ val testOnJava21 = tasks.register<Test>("testOnJava21") {
     testClassesDirs = files(sourceSets.test.map { it.output.classesDirs })
     classpath = files(sourceSets.test.map { it.runtimeClasspath })
     javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) })
+    useJUnitPlatform { excludeTags("live") }
+}
+
+tasks.register<Test>("liveTest") {
+    description = "Runs the tests that call S3; needs AWS credentials in the environment."
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    testClassesDirs = files(sourceSets.test.map { it.output.classesDirs })
+    classpath = files(sourceSets.test.map { it.runtimeClasspath })
+    useJUnitPlatform { includeTags("live") }
+    // The result depends on S3, which Gradle cannot see as an input.
+    outputs.upToDateWhen { false }
 }
 
 tasks.check {

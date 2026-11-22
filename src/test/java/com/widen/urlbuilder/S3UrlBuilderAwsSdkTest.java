@@ -44,7 +44,7 @@ class S3UrlBuilderAwsSdkTest
     private static final DateTimeFormatter amzDate =
         DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss'Z'").withZone(ZoneOffset.UTC);
 
-    private static final String[] keys = {
+    static final String[] keys = {
         "test-key.txt",
         "docs/a+b é.txt",
         "a%20b.txt",
