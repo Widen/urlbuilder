@@ -69,6 +69,16 @@ class UrlBuilderQueryParamsTest
     }
 
     @Test
+    void whitespaceValueIsWritten()
+    {
+        String added = new UrlBuilder("my.host.com", "/foo.jpg").addParameter("key0", " ").addParameter("key1", "\t").toString();
+        assertEquals("http://my.host.com/foo.jpg?key0=%20&key1=%09", added);
+
+        String parsed = new UrlBuilder("http://my.host.com/foo.jpg?key0=%20").toString();
+        assertEquals("http://my.host.com/foo.jpg?key0=%20", parsed);
+    }
+
+    @Test
     void encodesPlusSign()
     {
         String url = new UrlBuilder("my.host.com", "foo/bar/baz.html").addParameter("thekey", "+plus").toString();
@@ -207,5 +217,29 @@ class UrlBuilderQueryParamsTest
             .toString();
 
         assertEquals("http://my.host.com/path?next=%2Fhome&q=a%20b", url);
+    }
+
+    @Test
+    void writesQueryParameterStringWithoutQuestionMark()
+    {
+        UrlBuilder builder = new UrlBuilder("my.host.com", "/path")
+            .addParameter("q", "a b")
+            .addParameter("flag", null)
+            .addParameter("q", "c&d");
+
+        assertEquals("q=a%20b&flag&q=c%26d", builder.getQueryParameterString());
+    }
+
+    @Test
+    void clearsAllParameters()
+    {
+        String url = new UrlBuilder("my.host.com", "/path")
+            .addParameter("a", "1")
+            .addParameter("b", "2")
+            .clearParameters()
+            .addParameter("c", "3")
+            .toString();
+
+        assertEquals("http://my.host.com/path?c=3", url);
     }
 }

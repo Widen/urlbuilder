@@ -126,8 +126,9 @@ public interface UrlSigner {
         /**
          * Returns the port number of the URL.
          * 
-         * @return The port set on the builder, or {@code null} when it is unset,
-         *         80, or 443, whichever scheme the URL uses. A hostname-relative
+         * @return The port set on the builder, or {@code null} when it is unset
+         *         or is the default port of the scheme: 80 for {@code http}
+         *         and 443 for {@code https}. A hostname-relative
          *         URL omits the port, but the port is still reported here.
          */
         Integer getPort();
@@ -164,9 +165,9 @@ public interface UrlSigner {
          * inspect or manipulate individual parameters.
          *
          * <p>If the same key appears multiple times, only the last value is included.
-         * Values may be {@code null} or blank; such values are preserved as-is in
+         * Values may be {@code null} or empty; such values are preserved as-is in
          * this map. When the URL is serialized, parameters whose value is null or
-         * blank are rendered without an "=" sign (for example, {@code "key"} rather
+         * empty are rendered without an "=" sign (for example, {@code "key"} rather
          * than {@code "key="}).
          *
          * <p>The returned map is unmodifiable. It includes the parameters added with
