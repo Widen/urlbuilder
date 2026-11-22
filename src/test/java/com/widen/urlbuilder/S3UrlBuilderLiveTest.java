@@ -164,7 +164,7 @@ class S3UrlBuilderLiveTest
         assertRejects(400, "AuthorizationQueryParametersError", url);
     }
 
-    private static void upload(String bucket, String region)
+    static void upload(String bucket, String region)
     {
         AmazonS3 s3 = AmazonS3ClientBuilder.standard()
             .withCredentials(new EnvironmentVariableCredentialsProvider())
@@ -196,7 +196,7 @@ class S3UrlBuilderLiveTest
             : builder.usingCredentials(accessKey, secretKey, sessionToken);
     }
 
-    private static void assertServes(String key, String url) throws IOException
+    static void assertServes(String key, String url) throws IOException
     {
         Response response = get(url);
         assertEquals(200, response.status, withoutQuery(url) + " -> " + response);
@@ -213,13 +213,13 @@ class S3UrlBuilderLiveTest
     /**
      * Drops the query, which holds the credential, session token, and signature, so failure messages can show the URL.
      */
-    private static String withoutQuery(String url)
+    static String withoutQuery(String url)
     {
         int query = url.indexOf('?');
         return query < 0 ? url : url.substring(0, query);
     }
 
-    private static Response get(String url) throws IOException
+    static Response get(String url) throws IOException
     {
         HttpURLConnection connection = (HttpURLConnection) new URL(url).openConnection();
         // A redirect means S3 refused the URL as written; following it would hide that.
@@ -238,7 +238,7 @@ class S3UrlBuilderLiveTest
         }
     }
 
-    private static final class Response
+    static final class Response
     {
         final int status;
 
