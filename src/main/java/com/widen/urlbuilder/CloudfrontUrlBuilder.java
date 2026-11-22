@@ -4,6 +4,7 @@ import java.nio.charset.StandardCharsets;
 import java.security.GeneralSecurityException;
 import java.security.PrivateKey;
 import java.security.Signature;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
@@ -24,7 +25,7 @@ import java.util.concurrent.TimeUnit;
  * 
  * String signedUrl = new CloudfrontUrlBuilder("d123.cloudfront.net", "/videos/movie.mp4", "APKAEIBAERJR2EXAMPLE", privateKey)
  *     .withSsl()
- *     .expireIn(1, TimeUnit.HOURS)
+ *     .expireIn(Duration.ofHours(1))
  *     .toString();
  * }</pre>
  * 
@@ -199,6 +200,21 @@ public class CloudfrontUrlBuilder
      *
      * <p>Replaces an expiration set earlier with {@code expireAt}.
      *
+     * @param duration The time from URL generation until the URL expires (must be positive)
+     * @return This builder for method chaining
+     * @throws IllegalArgumentException if {@code duration} is null or not positive
+     * @since 3.0.0
+     */
+    public CloudfrontUrlBuilder expireIn(Duration duration)
+    {
+        expireDate.expireIn(duration);
+        return this;
+    }
+
+    /**
+     * Sets the relative duration until the URL expires, as a count of a {@link TimeUnit}.
+     * Behaves as {@link #expireIn(Duration)}.
+     *
      * @param duration The duration value (must be positive)
      * @param unit The time unit for the duration
      * @return This builder for method chaining
@@ -207,7 +223,6 @@ public class CloudfrontUrlBuilder
     public CloudfrontUrlBuilder expireIn(long duration, TimeUnit unit)
     {
         expireDate.expireIn(duration, unit);
-
         return this;
     }
 

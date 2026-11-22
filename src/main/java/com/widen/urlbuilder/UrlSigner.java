@@ -3,87 +3,110 @@ package com.widen.urlbuilder;
 import java.util.Map;
 
 /**
- * Functional interface for signing URLs during toString() generation.
- * 
- * <p>A URL signer receives contextual information about the URL being built
- * and returns a map of query parameters to append to the URL (typically 
- * including a signature parameter).
- * 
- * <p>The signer is invoked after all path segments and query parameters 
- * have been added but before the final URL string is constructed. This allows
- * the signer to inspect the complete unsigned URL and generate appropriate
- * signature parameters.
- * 
- * <p>Example usage with lambda:
+ * Signs a URL while {@link UrlBuilder#toString()} writes it.
+ *
+ * <p>The builder calls the signer once the path and the query parameters are known. The signer
+ * receives a {@link SigningContext} that describes the unsigned URL, and it returns the query
+ * parameters to append, typically a signature.
+ *
+ * <p>To sign the complete URL, sign {@link SigningContext#getStringToSign()}:
  * <pre>{@code
- * UrlBuilder builder = new UrlBuilder().withHostname("cdn.example.com")
- *     .withPath("/videos/movie.mp4")
+ * UrlBuilder builder = new UrlBuilder("cdn.example.com", "/videos/movie.mp4")
  *     .usingUrlSigner(context -> {
- *         String signature = hmacSha256(context.getUrl(), secretKey);
+ *         String signature = hmacSha256(context.getStringToSign(), secretKey);
  *         return Collections.singletonMap("signature", signature);
  *     });
  * }</pre>
- * 
- * <p>Example usage with class:
+ *
+ * <p>A value the signature must cover, such as an expiration, goes into the URL with
+ * {@link SigningContext#addParameter(String, Object)} before the signer reads that text:
  * <pre>{@code
- * public class HmacUrlSigner implements UrlSigner {
+ * public class ExpiringHmacSigner implements UrlSigner {
  *     private final String secretKey;
- *     
- *     public HmacUrlSigner(String secretKey) {
+ *
+ *     public ExpiringHmacSigner(String secretKey) {
  *         this.secretKey = secretKey;
  *     }
- *     
- *     public Map<String, String> sign(SigningContext context) {
- *         long expires = System.currentTimeMillis() / 1000 + 3600;
- *         String signature = hmacSha256(context.getUrl() + "\n" + expires, secretKey);
- *         Map<String, String> params = new HashMap<>();
- *         params.put("expires", String.valueOf(expires));
- *         params.put("signature", signature);
- *         return params;
+ *
+ *     public Map<String, ?> sign(SigningContext context) {
+ *         context.addParameter("expires", Instant.now().plusSeconds(3600).getEpochSecond());
+ *
+ *         String signature = hmacSha256(context.getStringToSign(), secretKey);
+ *         return Collections.singletonMap("signature", signature);
  *     }
  * }
- * 
- * UrlBuilder builder = new UrlBuilder().withHostname("cdn.example.com")
- *     .usingUrlSigner(new HmacUrlSigner(SECRET_KEY));
+ *
+ * UrlBuilder builder = new UrlBuilder("cdn.example.com", "/videos/movie.mp4")
+ *     .usingUrlSigner(new ExpiringHmacSigner(SECRET_KEY));
  * }</pre>
- * 
+ *
  * @since 3.0.0
  */
 @FunctionalInterface
 public interface UrlSigner {
     
     /**
-     * Sign the URL and return parameters to append.
-     * 
-     * <p>The returned map should contain query parameter names and values
-     * that will be appended to the URL. Common examples include:
-     * <ul>
-     *   <li>"signature" - The cryptographic signature</li>
-     *   <li>"expires" - Expiration timestamp</li>
-     *   <li>"key-id" - Key identifier used for signing</li>
-     * </ul>
-     * 
-     * <p>The returned parameter names and values are appended to the query
-     * string and URL encoded by the builder's query encoder, like parameters
-     * added with {@link UrlBuilder#addParameter(String, Object)}. Return them
-     * unencoded; a value that is already percent-encoded is encoded twice.
-     * @param context Contextual information about the URL being signed
-     * @return Map of query parameters to append (e.g., {@code "signature" -> "abc123"}).
-     *         Returns empty map if no parameters should be added.
-     *         Entries with a blank key or a null value are ignored during URL construction.
-     *         Returns null to skip signing (treated as empty map).
+     * Signs the URL and returns the query parameters to append to it.
+     *
+     * <p>The builder appends the returned parameters after every other parameter and encodes them
+     * with its query encoder, like parameters added with {@link UrlBuilder#addParameter(String, Object)}.
+     * Return them unencoded; a value that is already percent-encoded is encoded twice. A value may be
+     * any object, and the builder writes its {@code toString()}.
+     *
+     * <p>{@link SigningContext#getUrl()} does not include the returned parameters, so a signature over
+     * that URL does not cover them. A value the signature must cover, such as an expiration, is added
+     * with {@link SigningContext#addParameter(String, Object)} instead of being returned.
+     *
+     * @param context The URL being signed
+     * @return The parameters to append, such as {@code "signature" -> "abc123"}. The builder ignores
+     *         an entry with a blank key or a null value, and it treats a null map as empty.
      */
-    Map<String, String> sign(SigningContext context);
+    Map<String, ?> sign(SigningContext context);
     
     /**
-     * Context information provided to the signer.
-     * 
-     * <p>This interface provides read-only access to the URL components
-     * that have been built so far, allowing the signer to generate an
-     * appropriate signature based on the complete URL structure.
+     * The URL being signed.
+     *
+     * <p>The context describes the URL the builder is about to write, and it accepts further
+     * parameters that the signature must cover.
      */
     interface SigningContext {
-        
+
+        /**
+         * Adds a query parameter to the URL being signed, after the builder's own parameters.
+         *
+         * <p>From this call on, {@link #getUrl()}, {@link #getEncodedQuery()}, and
+         * {@link #getParameters()} include the parameter, so a signature over the URL covers it.
+         * The builder writes it before the parameters that {@link UrlSigner#sign} returns.
+         * The parameter belongs to this one signing, not to the builder: the next call to
+         * {@link UrlBuilder#toString()} starts again from the builder's own parameters.
+         *
+         * <p>Add every parameter before reading the text to sign. A signature computed earlier
+         * would not cover a parameter added later, so the context rejects the call.
+         *
+         * @param name The parameter name; a blank name adds nothing
+         * @param value The parameter value, written with its {@code toString()} and encoded by the
+         *        builder; null adds the name alone
+         * @return This context for chaining
+         * @throws IllegalStateException if the signer has already called {@link #getStringToSign()},
+         *         {@link #getUrl()}, {@link #getEncodedQuery()}, or {@link #getEncodedPathAndQuery()}
+         */
+        SigningContext addParameter(String name, Object value);
+
+        /**
+         * Adds several query parameters to the URL being signed, in the map's iteration order.
+         *
+         * <p>It behaves as {@link #addParameter(String, Object)} called once for each entry.
+         *
+         * @param parameters The parameter names and values
+         * @return This context for chaining
+         */
+        default SigningContext addParameters(Map<String, ?> parameters) {
+            for (Map.Entry<String, ?> entry : parameters.entrySet()) {
+                addParameter(entry.getKey(), entry.getValue());
+            }
+            return this;
+        }
+
         /**
          * Returns the protocol (scheme) of the URL.
          * 
@@ -124,7 +147,8 @@ public interface UrlSigner {
          * Returns the encoded query string of the URL.
          * 
          * <p>The query string will be properly encoded according to RFC 3986 Section 3.4.
-         * Multiple parameters are joined with {@code "&"} separators.
+         * Multiple parameters are joined with {@code "&"} separators. It includes the
+         * parameters added with {@link #addParameter(String, Object)}.
          * 
          * @return The encoded query string without leading "?" 
          *         (e.g., {@code "key1=value1&key2=value2"}), or empty string if no 
@@ -145,7 +169,8 @@ public interface UrlSigner {
          * blank are rendered without an "=" sign (for example, {@code "key"} rather
          * than {@code "key="}).
          *
-         * <p>The returned map is unmodifiable.
+         * <p>The returned map is unmodifiable. It includes the parameters added with
+         * {@link #addParameter(String, Object)} before the call.
          *
          * @return An unmodifiable map of raw query parameter keys to values
          *         (e.g., {@code {"key1" -> "value1", "key2" -> "value2"}}),
@@ -171,12 +196,46 @@ public interface UrlSigner {
          * was applied. It includes protocol, hostname, port, path, query
          * parameters, but not the fragment (unless included in your signing scheme).
          * 
-         * <p>This is typically what you want to sign.
-         * 
+         * <p>It includes the parameters added with {@link #addParameter(String, Object)}.
+         *
          * @return The complete unsigned URL string
          *         (e.g., "https://example.com/path?key=value")
          */
         String getUrl();
+
+        /**
+         * Returns the text a signature over the whole URL should cover.
+         *
+         * <p>This is the unsigned URL as the builder writes it: scheme, host, port, path, and every
+         * query parameter, including the parameters added with {@link #addParameter(String, Object)}.
+         * It equals {@link #getUrl()} and is named for what a signer does with it. A scheme that signs
+         * less signs {@link #getEncodedPathAndQuery()} or {@link #getEncodedPath()} instead.
+         *
+         * <p>A relative URL has less to sign. In protocol-relative mode the text starts with
+         * {@code //} and has no scheme. In hostname-relative mode it starts with the path, so the
+         * signature covers no scheme, host, or port and stays valid on any host.
+         *
+         * @return The text to sign (e.g., "https://example.com/path?key=value&amp;expires=1795127806")
+         */
+        default String getStringToSign() {
+            return getUrl();
+        }
+
+        /**
+         * Returns the encoded path followed by the encoded query string, without the scheme, host,
+         * or port.
+         *
+         * <p>A signature over this text covers the path and every query parameter, including the
+         * parameters added with {@link #addParameter(String, Object)}, and it stays valid when the
+         * same link is served from another host.
+         *
+         * @return The path and query string (e.g., "/path?key=value"), or the path alone when the
+         *         URL has no query parameters
+         */
+        default String getEncodedPathAndQuery() {
+            String query = getEncodedQuery();
+            return query.isEmpty() ? getEncodedPath() : getEncodedPath() + "?" + query;
+        }
         
         /**
          * Returns whether the URL uses SSL (https).

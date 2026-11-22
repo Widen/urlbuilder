@@ -13,15 +13,23 @@
  */
 package com.widen.urlbuilder;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
- * Immutable implementation of {@link UrlSigner.SigningContext}.
- * 
+ * Implementation of {@link UrlSigner.SigningContext}.
+ *
+ * <p>The values given to the constructor describe the builder's URL and never change.
+ * {@link #addParameter(String, Object)} appends to them, and the query string, the parameter map,
+ * and the URL are computed from both. Reading the URL or the query string closes the context to
+ * further parameters.
+ *
  * <p>Package-private as this is an internal implementation detail.
  * Users interact with the {@link UrlSigner.SigningContext} interface.
- * 
+ *
  * @since 3.0.0
  */
 final class SigningContextImpl implements UrlSigner.SigningContext {
@@ -36,9 +44,12 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
     private final String url;
     private final boolean ssl;
     private final UrlBuilder.GenerationMode generationMode;
-    
+    private final Encoder queryEncoder;
+    private final List<UrlBuilder.QueryParam> addedParameters = new ArrayList<>();
+    private boolean textToSignRead;
+
     /**
-     * Creates a new signing context with all fields.
+     * Creates a new signing context that encodes added parameters with {@link QueryParameterEncoder}.
      * 
      * @param protocol The protocol (http/https) or empty string for protocol-relative
      * @param hostname The hostname
@@ -55,6 +66,19 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
                        String encodedPath, String encodedQuery, Map<String, String> parameters,
                        String fragment,
                        String url, boolean ssl, UrlBuilder.GenerationMode generationMode) {
+        this(protocol, hostname, port, encodedPath, encodedQuery, parameters, fragment, url, ssl, generationMode,
+            new QueryParameterEncoder());
+    }
+
+    /**
+     * Creates a new signing context.
+     *
+     * @param queryEncoder The encoder for parameters added with {@link #addParameter(String, Object)}
+     */
+    SigningContextImpl(String protocol, String hostname, Integer port,
+                       String encodedPath, String encodedQuery, Map<String, String> parameters,
+                       String fragment,
+                       String url, boolean ssl, UrlBuilder.GenerationMode generationMode, Encoder queryEncoder) {
         this.protocol = protocol;
         this.hostname = hostname;
         this.port = port;
@@ -65,6 +89,25 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
         this.url = url;
         this.ssl = ssl;
         this.generationMode = generationMode;
+        this.queryEncoder = queryEncoder;
+    }
+
+    @Override
+    public UrlSigner.SigningContext addParameter(String name, Object value) {
+        if (textToSignRead) {
+            throw new IllegalStateException("Cannot add parameter '" + name
+                + "': the signer has already read the text to sign, so the signature would not cover it.");
+        }
+
+        UrlBuilder.addQueryParam(addedParameters, name, value, queryEncoder);
+        return this;
+    }
+
+    /**
+     * @return the parameters added with {@link #addParameter(String, Object)}, in the order they were added
+     */
+    List<UrlBuilder.QueryParam> getAddedParameters() {
+        return addedParameters;
     }
     
     @Override
@@ -89,12 +132,35 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
     
     @Override
     public String getEncodedQuery() {
-        return encodedQuery;
+        textToSignRead = true;
+        return withAddedParameters(encodedQuery, "");
+    }
+
+    /**
+     * @param text the unsigned URL, or a part of it, that ends with the builder's query string
+     * @param queryStart the text that starts the query string when the builder's query string is empty
+     * @return the text followed by the added parameters
+     */
+    private String withAddedParameters(String text, String queryStart) {
+        if (addedParameters.isEmpty()) {
+            return text;
+        }
+
+        String separator = encodedQuery.isEmpty() ? queryStart : "&";
+        return text + separator + UrlBuilder.buildParams(addedParameters, queryEncoder);
     }
     
     @Override
     public Map<String, String> getParameters() {
-        return parameters;
+        if (addedParameters.isEmpty()) {
+            return parameters;
+        }
+
+        Map<String, String> all = new LinkedHashMap<>(parameters);
+        for (UrlBuilder.QueryParam added : addedParameters) {
+            all.put(added.key, added.value);
+        }
+        return Collections.unmodifiableMap(all);
     }
     
     @Override
@@ -104,7 +170,8 @@ final class SigningContextImpl implements UrlSigner.SigningContext {
     
     @Override
     public String getUrl() {
-        return url;
+        textToSignRead = true;
+        return withAddedParameters(url, "?");
     }
     
     @Override

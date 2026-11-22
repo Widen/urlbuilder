@@ -15,7 +15,7 @@ class UrlSignerTest {
         };
         
         UrlSigner.SigningContext context = createMockContext();
-        Map<String, String> result = signer.sign(context);
+        Map<String, ?> result = signer.sign(context);
         
         assertEquals(1, result.size());
         assertEquals("test-sig", result.get("signature"));
@@ -26,7 +26,7 @@ class UrlSignerTest {
         UrlSigner signer = new TestSigner();
         
         UrlSigner.SigningContext context = createMockContext();
-        Map<String, String> result = signer.sign(context);
+        Map<String, ?> result = signer.sign(context);
         
         assertEquals(2, result.size());
         assertEquals("class-sig", result.get("signature"));
@@ -38,7 +38,7 @@ class UrlSignerTest {
         UrlSigner signer = context -> Collections.emptyMap();
         
         UrlSigner.SigningContext context = createMockContext();
-        Map<String, String> result = signer.sign(context);
+        Map<String, ?> result = signer.sign(context);
         
         assertTrue(result.isEmpty());
     }
@@ -53,7 +53,7 @@ class UrlSignerTest {
         };
         
         UrlSigner.SigningContext context = createMockContext();
-        Map<String, String> result = signer.sign(context);
+        Map<String, ?> result = signer.sign(context);
         
         assertEquals(2, result.size());
         assertNull(result.get("empty"));
@@ -61,6 +61,7 @@ class UrlSignerTest {
     
     private UrlSigner.SigningContext createMockContext() {
         return new UrlSigner.SigningContext() {
+            @Override public UrlSigner.SigningContext addParameter(String name, Object value) { return this; }
             @Override public String getProtocol() { return "https"; }
             @Override public String getHostname() { return "example.com"; }
             @Override public Integer getPort() { return null; }
