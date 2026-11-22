@@ -34,6 +34,25 @@ dependencies {
     testImplementation(libs.slf4j.simple)
 }
 
+// The Java 8 compiler and javadoc read sources in the machine's default encoding unless told otherwise.
+tasks.withType<JavaCompile>().configureEach {
+    options.encoding = "UTF-8"
+}
+
+tasks.javadoc {
+    (options as StandardJavadocDocletOptions).apply {
+        encoding = "UTF-8"
+        docEncoding = "UTF-8"
+        charSet = "UTF-8"
+    }
+}
+
+tasks.jar {
+    manifest {
+        attributes("Automatic-Module-Name" to "com.widen.urlbuilder")
+    }
+}
+
 tasks.withType<Test>().configureEach {
     useJUnitPlatform()
     testLogging {

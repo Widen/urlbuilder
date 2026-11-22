@@ -712,7 +712,7 @@ public class S3UrlBuilder
             try
             {
                 Mac mac = Mac.getInstance("HmacSHA1");
-                mac.init(new SecretKeySpec(key.getBytes(), "HmacSHA1"));
+                mac.init(new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA1"));
                 return Base64.getEncoder().encodeToString(mac.doFinal(data.getBytes(StandardCharsets.UTF_8)));
             }
             catch (Exception e)
