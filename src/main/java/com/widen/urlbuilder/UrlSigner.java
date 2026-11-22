@@ -63,13 +63,13 @@ public interface UrlSigner {
      * </ul>
      * 
      * <p>The returned parameter names and values are appended to the query
-     * string as-is, without any additional URL encoding. Both keys and values
-     * must already be safe for inclusion in a URL query string (encoded if
-     * necessary) before being returned.
+     * string and URL encoded by the builder's query encoder, like parameters
+     * added with {@link UrlBuilder#addParameter(String, Object)}. Return them
+     * unencoded; a value that is already percent-encoded is encoded twice.
      * @param context Contextual information about the URL being signed
      * @return Map of query parameters to append (e.g., {@code "signature" -> "abc123"}).
      *         Returns empty map if no parameters should be added.
-     *         Null values in the map will be ignored during URL construction.
+     *         Entries with a blank key or a null value are ignored during URL construction.
      *         Returns null to skip signing (treated as empty map).
      */
     Map<String, String> sign(SigningContext context);

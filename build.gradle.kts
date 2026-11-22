@@ -34,7 +34,7 @@ dependencies {
     testImplementation(libs.slf4j.simple)
 }
 
-tasks.test {
+tasks.withType<Test>().configureEach {
     useJUnitPlatform()
     testLogging {
         events("started", "passed", "skipped", "failed")
@@ -43,6 +43,20 @@ tasks.test {
         showCauses = true
         showStackTraces = true
     }
+}
+
+// The library targets Java 8, but most consumers run it on a newer JVM, where JDK classes such as
+// java.util.regex.Pattern behave differently.
+val testOnJava21 by tasks.registering(Test::class) {
+    description = "Runs the tests on Java 21."
+    group = LifecycleBasePlugin.VERIFICATION_GROUP
+    testClassesDirs = sourceSets.test.get().output.classesDirs
+    classpath = sourceSets.test.get().runtimeClasspath
+    javaLauncher.set(javaToolchains.launcherFor { languageVersion.set(JavaLanguageVersion.of(21)) })
+}
+
+tasks.check {
+    dependsOn(testOnJava21)
 }
 
 nexusPublishing {
