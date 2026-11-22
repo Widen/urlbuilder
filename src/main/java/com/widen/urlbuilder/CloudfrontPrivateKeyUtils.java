@@ -55,7 +55,11 @@ public class CloudfrontPrivateKeyUtils
 
     public static void registerBouncyCastleProvider()
     {
-        Security.addProvider(new BouncyCastleProvider());
+        // Constructing the provider registers thousands of algorithms, so skip it once BouncyCastle is installed
+        if (Security.getProvider(BouncyCastleProvider.PROVIDER_NAME) == null)
+        {
+            Security.addProvider(new BouncyCastleProvider());
+        }
     }
 
 }

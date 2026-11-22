@@ -29,7 +29,10 @@ public class HttpUtils
         {
             try
             {
-                String utf8EncodedFilename = URLEncoder.encode(filename, "UTF-8").replaceAll("\\+", "%20");
+                // URLEncoder keeps '*', which RFC 8187 does not allow unencoded
+                String utf8EncodedFilename = URLEncoder.encode(filename, "UTF-8")
+                    .replaceAll("\\+", "%20")
+                    .replace("*", "%2A");
                 header += String.format("; filename*=UTF-8''%s", utf8EncodedFilename);
             }
             catch (UnsupportedEncodingException e)
