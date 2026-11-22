@@ -91,7 +91,8 @@ public class UrlBuilder {
      * Construct a UrlBuilder by parsing an existing URL string.
      * <p>
      * {@link java.net.URL} is used to parse the input. The resulting builder
-     * will be set to {@link GenerationMode#FULLY_QUALIFIED} mode.
+     * will be set to {@link GenerationMode#FULLY_QUALIFIED} mode. Percent-encoded
+     * sequences in the path and query string are decoded.
      *
      * @param spec the URL string to parse
      * @throws NonParsableUrl if input is not parsable into a java.net.URL object
@@ -102,13 +103,13 @@ public class UrlBuilder {
         usingSsl(url.getProtocol().equals("https"));
         withHostname(url.getHost());
         setPort(url.getPort());
-        withPath(url.getPath());
+        withPathEncoded(url.getPath());
 
         String params = url.getQuery();
         if (params != null) {
             String[] pairs = params.split("&");
             for (String pair : pairs) {
-                String[] keyValue = pair.split("=");
+                String[] keyValue = pair.split("=", 2);
                 if (keyValue.length == 2) {
                     addParameter(queryEncoder.decode(keyValue[0]), queryEncoder.decode(keyValue[1]));
                 }
