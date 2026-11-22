@@ -20,6 +20,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * Tests for PathSegmentEncoder following RFC 3986 Section 3.3.
@@ -148,6 +149,18 @@ class PathSegmentEncoderTest {
     @Test
     void decodeKeepsUnencodedSupplementaryCharacters() {
         assertEquals("a \ud83d\ude00\u00e9", encoder.decode("a%20\ud83d\ude00\u00e9"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"%\uff12\uff25", "%\u0663\u0661", "%2\uff25"})
+    void decodeReadsOnlyAsciiHexDigits(String fullwidthOrArabicDigits) {
+        assertEquals(fullwidthOrArabicDigits, encoder.decode(fullwidthOrArabicDigits));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"caf%E9", "%C3", "%C3%28", "%FF"})
+    void decodeRejectsBytesThatAreNotUtf8(String latin1OrTruncated) {
+        assertThrows(IllegalArgumentException.class, () -> encoder.decode(latin1OrTruncated));
     }
 
     @Test

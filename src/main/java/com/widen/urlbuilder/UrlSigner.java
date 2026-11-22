@@ -1,5 +1,6 @@
 package com.widen.urlbuilder;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -158,26 +159,30 @@ public interface UrlSigner {
         String getEncodedQuery();
         
         /**
-         * Returns the raw (unencoded) query parameters as a map.
+         * Returns the raw (unencoded) query parameters as a map of each key to its values.
          *
          * <p>This provides access to the individual query parameter keys and values
          * before encoding, which can be useful for signing schemes that need to
-         * inspect or manipulate individual parameters.
+         * inspect individual parameters.
          *
-         * <p>If the same key appears multiple times, only the last value is included.
+         * <p>A key that appears several times has one value for each appearance, in the order the
+         * URL writes them. Grouping by key loses the order of {@code a=1&b=2&a=3}, so a signature
+         * that must cover the query string as written signs {@link #getStringToSign()} or
+         * {@link #getEncodedQuery()}.
          * Values may be {@code null} or empty; such values are preserved as-is in
          * this map. When the URL is serialized, parameters whose value is null or
          * empty are rendered without an "=" sign (for example, {@code "key"} rather
          * than {@code "key="}).
          *
-         * <p>The returned map is unmodifiable. It includes the parameters added with
-         * {@link #addParameter(String, Object)} before the call.
+         * <p>The returned map and its lists are unmodifiable. It includes the parameters added with
+         * {@link #addParameter(String, Object)} before the call, and reading it leaves the context
+         * open to further parameters.
          *
          * @return An unmodifiable map of raw query parameter keys to values
-         *         (e.g., {@code {"key1" -> "value1", "key2" -> "value2"}}),
+         *         (e.g., {@code {"key1" -> ["value1"], "key2" -> ["a", "b"]}}),
          *         or an empty map if no query parameters are set
          */
-        Map<String, String> getParameters();
+        Map<String, List<String>> getParameters();
 
         /**
          * Returns the fragment of the URL.

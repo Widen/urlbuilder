@@ -20,6 +20,8 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -53,10 +55,10 @@ class CloudfrontUrlBuilderTest
 
     @ParameterizedTest
     @CsvSource({
-        "/folder/, http://dnnfhn216qiqy.cloudfront.net/folder/?Expires=",
-        "a//b,     http://dnnfhn216qiqy.cloudfront.net/a/%2Fb?Expires=",
-        "/a///b//, http://dnnfhn216qiqy.cloudfront.net/a/%2F%2Fb/%2F?Expires=",
-        "a+b @c:d(1)*~.pdf, http://dnnfhn216qiqy.cloudfront.net/a%2Bb%20%40c%3Ad%281%29%2A~.pdf?Expires="
+        "/folder/, https://dnnfhn216qiqy.cloudfront.net/folder/?Expires=",
+        "a//b,     https://dnnfhn216qiqy.cloudfront.net/a/%2Fb?Expires=",
+        "/a///b//, https://dnnfhn216qiqy.cloudfront.net/a/%2F%2Fb/%2F?Expires=",
+        "a+b @c:d(1)*~.pdf, https://dnnfhn216qiqy.cloudfront.net/a%2Bb%20%40c%3Ad%281%29%2A~.pdf?Expires="
     })
     void encodesKeyAndKeepsItsSlashes(String key, String expectedPrefix)
     {
@@ -65,6 +67,48 @@ class CloudfrontUrlBuilderTest
             .toString();
 
         assertTrue(url.startsWith(expectedPrefix), url);
+    }
+
+    /**
+     * CloudFront rebuilds the signed resource from the request, and clients send the host in lower case without the
+     * default port of the scheme.
+     */
+    @ParameterizedTest
+    @ValueSource(strings = {"Dnnfhn216qiqy.CloudFront.net", "dnnfhn216qiqy.cloudfront.net:443"})
+    void writesAndSignsHostAsClientsSendIt(String hostname)
+    {
+        String expected = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
+            .withSsl()
+            .expireAt(Instant.ofEpochSecond(1381356586L))
+            .toString();
+
+        String url = new CloudfrontUrlBuilder(hostname, "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
+            .withSsl()
+            .expireAt(Instant.ofEpochSecond(1381356586L))
+            .toString();
+
+        assertEquals(expected, url);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Expires", "Signature", "Key-Pair-Id", "Policy"})
+    void addParameterRejectsNamesCloudfrontReserves(String name)
+    {
+        CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem);
+
+        assertThrows(IllegalArgumentException.class, () -> builder.addParameter(name, "1"));
+    }
+
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = {"", " ", "/", "///"})
+    void rejectsKeyThatNamesTheDistributionRoot(String key)
+    {
+        CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem);
+
+        assertThrows(IllegalArgumentException.class, () -> builder.withKey(key));
+        assertThrows(IllegalArgumentException.class,
+            () -> new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", key, "APKAIW7O5EPF5UBMJ7KQ", pem));
     }
 
     @Test
@@ -76,13 +120,13 @@ class CloudfrontUrlBuilderTest
             .expireAt(Instant.ofEpochSecond(1381356586L))
             .toString();
 
-        assertTrue(url.startsWith("http://dnnfhn216qiqy.cloudfront.net/test.jpeg?a=2&Expires="), url);
+        assertTrue(url.startsWith("https://dnnfhn216qiqy.cloudfront.net/test.jpeg?a=2&Expires="), url);
     }
 
     @Test
     void testNonAsciiCharsInAttachment()
     {
-        CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/0/b/c/d/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem).withAttachmentFilename("+ƒoo.jpg").expireAt(Instant.ofEpochSecond(1381356586L));
+        CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/0/b/c/d/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem).withSsl(false).withAttachmentFilename("+ƒoo.jpg").expireAt(Instant.ofEpochSecond(1381356586L));
 
         // Signature changes with v3 RFC 3986 compliant encoding
         assertEquals("http://dnnfhn216qiqy.cloudfront.net/0/b/c/d/test.jpeg?response-content-disposition=attachment%3B%20filename%3D%22%2Boo.jpg%22%3B%20filename%2A%3DUTF-8%27%27%252B%25C6%2592oo.jpg&Expires=1381356586&Signature=XpZvVljTm8RzudHPB8xxgVdiJ~GEgEZ-mJr-d40XaHvHJLlX-iU949TIa6EF3J7KMYXNF8nD~DM6lYZ9qlQH0Pjamj05DC3tKXqSIH89wGN3iDtUP9eCqUeAayCZQDNIeNPHJxU9TS1fNS4HRkW4sQMjM1FfNwPTMvaaCKixJJpweszNe~ii24rE~CB6DZDEVOL5206eba9jZZELjIJA6GNSIAqO8Hi88bB8X9GC7Bd2vdGABtkXYqHrs78BNoqcZFXLsNj9ehjElkDLDNxtbL-~sZqNsi6me6r0kKh1XNRCE83BcirZXRO1NTAscEcnVvB9THyaHoehE9F2cI9SEA__&Key-Pair-Id=APKAIW7O5EPF5UBMJ7KQ", builder.toString());
@@ -264,16 +308,14 @@ class CloudfrontUrlBuilderTest
     }
 
     @Test
-    void testExpireInWithSsl()
+    void usesHttpsUnlessTurnedOff()
     {
         CloudfrontUrlBuilder builder = new CloudfrontUrlBuilder("dnnfhn216qiqy.cloudfront.net", "/test.jpeg", "APKAIW7O5EPF5UBMJ7KQ", pem)
-            .withSsl()
             .expireIn(Duration.ofHours(1));
-        
-        String url = builder.toString();
-        
-        assertTrue(url.startsWith("https://"), "URL should use HTTPS when withSsl() is called");
-        assertTrue(url.contains("Expires="), "URL should still contain signing parameters");
+
+        assertTrue(builder.toString().startsWith("https://dnnfhn216qiqy.cloudfront.net/test.jpeg?Expires="));
+        assertTrue(builder.withSsl(false).toString().startsWith("http://dnnfhn216qiqy.cloudfront.net/test.jpeg?Expires="));
+        assertTrue(builder.withSsl().toString().startsWith("https://dnnfhn216qiqy.cloudfront.net/test.jpeg?Expires="));
     }
 
     @Test
@@ -311,7 +353,7 @@ class CloudfrontUrlBuilderTest
             .addParameter("download", null)
             .expireAt(Instant.ofEpochSecond(1381356586L));
 
-        assertTrue(builder.toString().startsWith("http://dnnfhn216qiqy.cloudfront.net/test.jpeg?download&Expires=1381356586&"));
+        assertTrue(builder.toString().startsWith("https://dnnfhn216qiqy.cloudfront.net/test.jpeg?download&Expires=1381356586&"));
     }
 
     @Nested

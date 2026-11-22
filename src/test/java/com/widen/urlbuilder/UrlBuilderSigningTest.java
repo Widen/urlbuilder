@@ -68,7 +68,7 @@ class UrlBuilderSigningTest {
                 assertEquals("http://example.com/test?user=john&expires=1795127806", context.getStringToSign());
                 assertEquals(context.getStringToSign(), context.getUrl());
                 assertEquals("user=john&expires=1795127806", context.getEncodedQuery());
-                assertEquals("1795127806", context.getParameters().get("expires"));
+                assertEquals(Collections.singletonList("1795127806"), context.getParameters().get("expires"));
 
                 return Collections.singletonMap("signature", "sig-of-" + context.getParameters().size());
             });
@@ -76,6 +76,27 @@ class UrlBuilderSigningTest {
         String signedUrl = "http://example.com/test?user=john&expires=1795127806&signature=sig-of-2";
         assertEquals(signedUrl, builder.toString());
         assertEquals(signedUrl, builder.toString(), "the added parameter is not kept on the builder");
+    }
+
+    @Test
+    void testSignerSeesEveryValueOfARepeatedParameter() {
+        UrlBuilder builder = new UrlBuilder("example.com", "/test")
+            .addParameter("a", "1")
+            .addParameter("a", "2")
+            .addParameter("flag", null)
+            .usingUrlSigner(context -> {
+                context.addParameter("a", "3");
+
+                Map<String, List<String>> parameters = context.getParameters();
+                assertEquals(Arrays.asList("1", "2", "3"), parameters.get("a"));
+                assertEquals(Collections.singletonList(null), parameters.get("flag"));
+                assertThrows(UnsupportedOperationException.class, () -> parameters.get("a").add("4"));
+                assertThrows(UnsupportedOperationException.class, () -> parameters.remove("a"));
+
+                return Collections.emptyMap();
+            });
+
+        assertEquals("http://example.com/test?a=1&a=2&flag&a=3", builder.toString());
     }
 
     @Test

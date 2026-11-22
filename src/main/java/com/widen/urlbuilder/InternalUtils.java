@@ -2,7 +2,7 @@ package com.widen.urlbuilder;
 
 import java.io.*;
 
-public class InternalUtils
+class InternalUtils
 {
 
     static void checkNotNull(Object o, String var)

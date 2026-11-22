@@ -24,7 +24,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.regex.Pattern;
 
 /**
  * Utility class for constructing syntactically correct HTTP URLs using a fluent method-chaining API.
@@ -56,8 +55,6 @@ import java.util.regex.Pattern;
  * @see GenerationMode
  */
 public class UrlBuilder {
-
-    private static final Pattern LEADING_SLASHES = Pattern.compile("^/+");
 
     private boolean ssl = false;
 
@@ -102,6 +99,8 @@ public class UrlBuilder {
      *
      * @param spec the URL string to parse
      * @throws NonParsableUrl if input is not parsable into a java.net.URL object
+     * @throws IllegalArgumentException if a percent-encoded sequence in the path or query string is not UTF-8, as
+     *         in {@code /caf%E9}; the builder could not write that URL back unchanged
      */
     public UrlBuilder(String spec) {
         URL url = parseUrlInput(spec);
@@ -227,7 +226,7 @@ public class UrlBuilder {
      * @return The URL path.
      */
     public String getPath() {
-        return "/" + StringUtilsInternal.join(path, "/");
+        return "/" + String.join("/", path);
     }
 
     /**
@@ -324,7 +323,9 @@ public class UrlBuilder {
      * @return this builder for method chaining
      * @see LegacyEncoder
      * @since 3.0.0
+     * @deprecated This method exists to ease the move from v2.x. Move to the default RFC 3986 encoding.
      */
+    @Deprecated
     @SuppressWarnings("deprecation")
     public UrlBuilder usingLegacyEncoding() {
         LegacyEncoder legacyEncoder = new LegacyEncoder();
@@ -394,7 +395,7 @@ public class UrlBuilder {
      *             negative number means the default port of the scheme
      */
     public void setPort(int port) {
-        this.port = port;
+        this.port = Math.max(port, 0);
 
         if (port == 443) {
             usingSsl(true);
@@ -441,46 +442,6 @@ public class UrlBuilder {
     UrlBuilder withExactPathSegments(List<String> segments) {
         path = new ArrayList<>(segments);
         return this;
-    }
-
-    /**
-     * Returns the key without its leading slashes, as S3 and CloudFront keys are given.
-     */
-    static String stripLeadingSlashes(String key) {
-        return key == null ? "" : LEADING_SLASHES.matcher(key).replaceFirst("");
-    }
-
-    /**
-     * Splits an object key into path segments for {@link #withExactPathSegments(List)} the way the AWS SDKs write
-     * it, after dropping leading slashes: the first slash of a run separates segments, and the rest belong to the
-     * next segment, which encodes them as %2F, so {@code a///b} becomes {@code a/%2F%2Fb}. Raw {@code //} in a path
-     * would change the key behind an HTTP client or proxy that merges slashes.
-     */
-    static List<String> objectKeySegments(String key) {
-        String stripped = stripLeadingSlashes(key);
-        List<String> segments = new ArrayList<>();
-        if (stripped.isEmpty()) {
-            return segments;
-        }
-
-        StringBuilder segment = new StringBuilder();
-        for (int i = 0; i < stripped.length(); i++) {
-            char c = stripped.charAt(i);
-            if (c != '/') {
-                segment.append(c);
-                continue;
-            }
-
-            segments.add(segment.toString());
-            segment.setLength(0);
-            while (i + 1 < stripped.length() && stripped.charAt(i + 1) == '/') {
-                segment.append('/');
-                i++;
-            }
-        }
-        segments.add(segment.toString());
-
-        return segments;
     }
 
     private List<String> makePathSegments(String in, boolean decodeSegments) {
@@ -736,6 +697,7 @@ public class UrlBuilder {
      * <p>
      * This method may be called multiple times, possibly returning different results based on current state.
      *
+     * @throws IllegalArgumentException if the hostname is blank in fully qualified or protocol-relative mode
      * @see #modeFullyQualified()
      * @see #modeHostnameRelative()
      * @see #modeProtocolRelative()
@@ -744,8 +706,9 @@ public class UrlBuilder {
     public String toString() {
         StringBuilder url = new StringBuilder();
 
-        if (GenerationMode.FULLY_QUALIFIED.equals(mode) && StringUtilsInternal.isBlank(hostname)) {
-            throw new IllegalArgumentException("Hostname cannot be blank when generation mode is FULLY_QUALIFIED.");
+        // A blank host would write "//null/a" or "///a", which a browser reads as a link to the host "a"
+        if (!GenerationMode.HOSTNAME_RELATIVE.equals(mode) && StringUtilsInternal.isBlank(hostname)) {
+            throw new IllegalArgumentException("Hostname cannot be blank when generation mode is " + mode + ".");
         }
 
         if (GenerationMode.FULLY_QUALIFIED.equals(mode)) {
@@ -798,7 +761,7 @@ public class UrlBuilder {
             return "/";
         }
 
-        String encodedPath = "/" + StringUtilsInternal.join(encodePathSegments(), "/");
+        String encodedPath = "/" + String.join("/", encodePathSegments());
         return trailingPathSlash ? encodedPath + "/" : encodedPath;
     }
 
@@ -846,18 +809,13 @@ public class UrlBuilder {
             protocol = ssl ? "https" : "http";
         }
 
-        Map<String, String> parameters = new LinkedHashMap<>();
-        for (QueryParam qp : queryParams) {
-            parameters.put(qp.key, qp.value);
-        }
-
         return new SigningContextImpl(
             protocol,
             hostname != null ? hostname : "",
             hasNonDefaultPort() ? port : null,
             encodedPath,
             encodedQuery,
-            parameters,
+            getQueryParameters(),
             fragment,
             unsignedUrl,
             ssl,

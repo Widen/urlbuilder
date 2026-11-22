@@ -193,6 +193,7 @@ class S3UrlBuilderAwsSdkTest
 
         S3UrlBuilder builder = new S3UrlBuilder("test-bucket", "docs/a+b é.txt")
             .withEndpoint("localhost:9000", "us-east-1")
+            .usingSsl(false)
             .usingBucketInPath()
             .usingCredentials(accessKey, secretKey);
 

@@ -77,6 +77,17 @@ class UrlBuilderParsingTest
 
     @ParameterizedTest
     @ValueSource(strings = {
+        "http://my.host.com/caf%E9.txt",
+        "http://my.host.com/a?q=caf%E9",
+        "http://my.host.com/a?caf%E9=1"
+    })
+    void throwsOnPercentSequenceThatIsNotUtf8(String latin1Url)
+    {
+        assertThrows(IllegalArgumentException.class, () -> new UrlBuilder(latin1Url));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
         "http://my.host.com:8080/bar?a=b#foo",
         "http://my.host.com/bar?a=b#foo",
         "https://my.host.com/bar?a=b#foo",

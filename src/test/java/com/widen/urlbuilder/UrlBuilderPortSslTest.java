@@ -96,6 +96,8 @@ class UrlBuilderPortSslTest
     void leavesPortUnsetWithoutOne()
     {
         assertEquals(0, new UrlBuilder("my.host.com", "foo").getPort());
+        assertEquals(0, new UrlBuilder("http://my.host.com/foo").getPort());
+        assertEquals(0, new UrlBuilder("my.host.com", -99, "foo").getPort());
     }
 
     @ParameterizedTest

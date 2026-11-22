@@ -2,6 +2,7 @@ package com.widen.urlbuilder;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
@@ -11,9 +12,9 @@ class SigningContextTest {
     
     @Test
     void testAllFieldsPopulated() {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("key1", "value1");
-        params.put("key2", "value2");
+        Map<String, List<String>> params = new LinkedHashMap<>();
+        params.put("key1", Collections.singletonList("value1"));
+        params.put("key2", Collections.singletonList("value2"));
 
         SigningContextImpl context = new SigningContextImpl(
             "https",
@@ -373,7 +374,7 @@ class SigningContextTest {
 
     @Test
     void testSingleParameter() {
-        Map<String, String> params = Collections.singletonMap("token", "abc123");
+        Map<String, List<String>> params = Collections.singletonMap("token", Collections.singletonList("abc123"));
 
         SigningContextImpl context = new SigningContextImpl(
             "https",
@@ -390,13 +391,13 @@ class SigningContextTest {
 
         assertEquals("token=abc123", context.getEncodedQuery());
         assertEquals(1, context.getParameters().size());
-        assertEquals("abc123", context.getParameters().get("token"));
+        assertEquals(Collections.singletonList("abc123"), context.getParameters().get("token"));
     }
 
     @Test
     void testParameterWithEmptyStringValue() {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("flag", "");
+        Map<String, List<String>> params = new LinkedHashMap<>();
+        params.put("flag", Collections.singletonList(""));
 
         SigningContextImpl context = new SigningContextImpl(
             "https",
@@ -413,13 +414,13 @@ class SigningContextTest {
 
         assertEquals("flag=", context.getEncodedQuery());
         assertEquals(1, context.getParameters().size());
-        assertEquals("", context.getParameters().get("flag"));
+        assertEquals(Collections.singletonList(""), context.getParameters().get("flag"));
     }
 
     @Test
     void testParameterWithNullValue() {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("flag", null);
+        Map<String, List<String>> params = new LinkedHashMap<>();
+        params.put("flag", Collections.singletonList(null));
 
         SigningContextImpl context = new SigningContextImpl(
             "https",
@@ -436,14 +437,14 @@ class SigningContextTest {
 
         assertEquals("flag", context.getEncodedQuery());
         assertEquals(1, context.getParameters().size());
-        assertNull(context.getParameters().get("flag"));
+        assertEquals(Collections.singletonList(null), context.getParameters().get("flag"));
         assertTrue(context.getParameters().containsKey("flag"));
     }
 
     @Test
     void testParameterWithEmptyStringKey() {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("", "value");
+        Map<String, List<String>> params = new LinkedHashMap<>();
+        params.put("", Collections.singletonList("value"));
 
         SigningContextImpl context = new SigningContextImpl(
             "https",
@@ -460,13 +461,13 @@ class SigningContextTest {
 
         assertEquals("=value", context.getEncodedQuery());
         assertEquals(1, context.getParameters().size());
-        assertEquals("value", context.getParameters().get(""));
+        assertEquals(Collections.singletonList("value"), context.getParameters().get(""));
     }
 
     @Test
     void testParameterWithEmptyStringKeyAndValue() {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("", "");
+        Map<String, List<String>> params = new LinkedHashMap<>();
+        params.put("", Collections.singletonList(""));
 
         SigningContextImpl context = new SigningContextImpl(
             "https",
@@ -483,13 +484,13 @@ class SigningContextTest {
 
         assertEquals("=", context.getEncodedQuery());
         assertEquals(1, context.getParameters().size());
-        assertEquals("", context.getParameters().get(""));
+        assertEquals(Collections.singletonList(""), context.getParameters().get(""));
     }
 
     @Test
     void testParametersAreUnmodifiable() {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("key", "value");
+        Map<String, List<String>> params = new LinkedHashMap<>();
+        params.put("key", Collections.singletonList("value"));
 
         SigningContextImpl context = new SigningContextImpl(
             "https",
@@ -505,16 +506,16 @@ class SigningContextTest {
         );
 
         assertThrows(UnsupportedOperationException.class, () ->
-            context.getParameters().put("new", "entry")
+            context.getParameters().put("new", Collections.emptyList())
         );
     }
 
     @Test
     void testEncodedQueryWithMultipleParameters() {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("a", "1");
-        params.put("b", "2");
-        params.put("c", "3");
+        Map<String, List<String>> params = new LinkedHashMap<>();
+        params.put("a", Collections.singletonList("1"));
+        params.put("b", Collections.singletonList("2"));
+        params.put("c", Collections.singletonList("3"));
 
         SigningContextImpl context = new SigningContextImpl(
             "https",
@@ -531,16 +532,16 @@ class SigningContextTest {
 
         assertEquals("a=1&b=2&c=3", context.getEncodedQuery());
         assertEquals(3, context.getParameters().size());
-        assertEquals("1", context.getParameters().get("a"));
-        assertEquals("2", context.getParameters().get("b"));
-        assertEquals("3", context.getParameters().get("c"));
+        assertEquals(Collections.singletonList("1"), context.getParameters().get("a"));
+        assertEquals(Collections.singletonList("2"), context.getParameters().get("b"));
+        assertEquals(Collections.singletonList("3"), context.getParameters().get("c"));
     }
 
     @Test
     void testEncodedQueryWithSpecialCharacters() {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("query", "hello world");
-        params.put("path", "/a/b");
+        Map<String, List<String>> params = new LinkedHashMap<>();
+        params.put("query", Collections.singletonList("hello world"));
+        params.put("path", Collections.singletonList("/a/b"));
 
         SigningContextImpl context = new SigningContextImpl(
             "https",
@@ -556,8 +557,8 @@ class SigningContextTest {
         );
 
         assertEquals("query=hello+world&path=%2Fa%2Fb", context.getEncodedQuery());
-        assertEquals("hello world", context.getParameters().get("query"));
-        assertEquals("/a/b", context.getParameters().get("path"));
+        assertEquals(Collections.singletonList("hello world"), context.getParameters().get("query"));
+        assertEquals(Collections.singletonList("/a/b"), context.getParameters().get("path"));
     }
 
     @Test

@@ -70,10 +70,11 @@ upgrade notes first.
 4. **Expect unencoded text from `getPath()`, `getPathSegments()`, and `S3UrlBuilder.getKey()`.** They returned
    percent-encoded text in 2.x. `getKey()` now returns the key as given, without leading slashes.
 5. **Check code that parses a URL and writes it back.** `new UrlBuilder(String)` now decodes the path, so `/a%20b` stays
-   `/a%20b`. In 2.x it became `/a%2520b`. A trailing slash now stays as well, so `/foo/` no longer becomes `/foo`.
-   Check S3 and CloudFront keys that end with a slash or contain `//` too: both builders now keep those slashes, and
-   write each slash after the first of a run as `%2F`, so `a//b` becomes `/a/%2Fb`. A `+` in the query
-   string still reads as a space, as in 2.x, and is written back as `%20`.
+   `/a%20b`. In 2.x it became `/a%2520b`. A trailing slash now stays as well, so `/foo/` no longer becomes `/foo`. Check
+   S3 and CloudFront keys that end with a slash or contain `//` too: both builders now keep those slashes, and write
+   each slash after the first of a run as `%2F`, so `a//b` becomes `/a/%2Fb`. A `+` in the query string still reads as a
+   space, as in 2.x, and is written back as `%20`. A percent-encoded sequence that is not UTF-8, such as `/caf%E9`, now
+   throws `IllegalArgumentException`, because the builder cannot write that URL back unchanged.
 6. **Check code that adds a parameter whose value is only whitespace.** `addParameter("q", " ")` now writes `q=%20`. In
    2.x it wrote `q` alone, as a null or empty value still does.
 7. **Check code that calls both `expireIn` and `expireAt`.** The later call now wins. In 2.x `expireAt` always won.
@@ -84,15 +85,31 @@ upgrade notes first.
    `withAttachmentFilename` does, because S3 rejects an anonymous request that sets `response-content-type`. Without
    an expiration and credentials, `toString()` throws `IllegalStateException`. `withKey` and the constructor throw
    `IllegalArgumentException` for a key of only slashes, which named the bucket itself. `inRegion` throws it for a
-   blank region.
+   blank region, and `withEndpoint` throws it for a blank endpoint.
 10. **Move from `expireAt(Date)` to `expireAt(Instant)`.** The `Date` overload still works and is deprecated.
 11. **Check code that pairs a scheme with port 80 or 443, or reads `getPort()`.** The port now wins over the scheme:
     `https://host:80/` parses as `http://host/`, and `setPort(80)` turns HTTPS off. A `usingSsl(boolean)` call after
     the port keeps the port, so `new UrlBuilder("host", 80, "a").usingSsl()` writes `https://host:80/a` where 2.x
     wrote `https://host/a`. `new UrlBuilder(hostname, path)` sets no port, so its `getPort()` returns 0 where 2.x
-    returned 80.
+    returned 80. A URL parsed without a port returns 0 as well, where 2.x returned -1.
 12. **Update any rule that names the BouncyCastle artifacts.** The library now depends on `bcprov-jdk18on` and
     `bcpkix-jdk18on` 1.87, where 2.x depended on `bcprov-jdk15to18` and `bcpkix-jdk15to18` 1.80.
+13. **Expect `https` from `S3UrlBuilder` and `CloudfrontUrlBuilder`.** Both now write an HTTPS URL by default, where 2.x
+    wrote `http`, so a signature and a session token no longer travel in clear text. To keep `http`, call
+    `usingSsl(false)` on `S3UrlBuilder` or the new `withSsl(false)` on `CloudfrontUrlBuilder`. A CloudFront signature
+    covers the scheme, so CloudFront rejects a link signed for `https` that is requested over `http`.
+14. **Check S3 URLs for a bucket whose name contains a period.** In an HTTPS URL the bucket now goes in the path, as in
+    `https://s3.amazonaws.com/my.bucket/key.txt`, because the endpoint's wildcard certificate does not match
+    `my.bucket.s3.amazonaws.com`. A path-style URL reaches a bucket outside `us-east-1` only through its regional
+    endpoint, so call `inRegion` for such a bucket. A bucket also goes in the path when the endpoint is an IP address.
+    An `http` URL and `usingBucketVirtualHost()` keep the bucket in the hostname.
+15. **Check `CloudfrontUrlBuilder` calls that version 2 accepted.** The constructor and `withKey` throw
+    `IllegalArgumentException` for a key that is blank or only slashes, which signed the root of the distribution.
+    `addParameter` throws it for `Expires`, `Signature`, `Key-Pair-Id`, and `Policy`, which CloudFront reads the
+    signature from.
+16. **Give a protocol-relative URL a hostname.** `toString()` now throws `IllegalArgumentException` for a blank hostname
+    in protocol-relative mode, as it does in fully qualified mode. In 2.x it wrote `//null/path`.
+17. **Stop importing `StringUtilsInternal` and `InternalUtils`.** The two helper classes are no longer public.
 
 ### Added
 
@@ -105,6 +122,7 @@ upgrade notes first.
 - `NoEncodingEncoder.INSTANCE` is a shared instance of that encoder.
 - `S3UrlBuilder` and `CloudfrontUrlBuilder` gain `expireAt(Instant)` and `expireIn(Duration)`.
 - `S3UrlBuilder.withEndpoint(endpoint, region)` sets a custom endpoint and the region Signature Version 4 signs for.
+- `CloudfrontUrlBuilder.withSsl(boolean)` sets the scheme, as `S3UrlBuilder.usingSsl(boolean)` does.
 - `CloudfrontPrivateKeyUtils.fromPemString` reads PKCS#8 keys (`BEGIN PRIVATE KEY`) as well as PKCS#1 keys.
 - The jar declares the module name `com.widen.urlbuilder` through `Automatic-Module-Name`.
 
@@ -120,11 +138,21 @@ upgrade notes first.
 - Port 80 turns HTTPS off, as port 443 turns it on, and `new UrlBuilder(hostname, path)` sets no port.
 - `expireIn` and `expireAt` replace each other, so the later call sets the expiration.
 - `expireIn` rejects a zero or negative duration, and `expireAt` rejects null.
-- `S3UrlBuilder.withContentType` requires a signed URL, `withKey` rejects a key of only slashes, and `inRegion`
-  rejects a blank region.
+- `S3UrlBuilder.withContentType` requires a signed URL, `withKey` rejects a key of only slashes, `inRegion`
+  rejects a blank region, and `withEndpoint` rejects a blank endpoint.
 - `S3UrlBuilder` writes the host in lower case and leaves out the default port of the scheme, so
   `withEndpoint("MinIO.example.com:443", region).usingSsl()` writes `https://bucket.minio.example.com/`. The SigV4
-  signature covers that host.
+  signature covers that host. `CloudfrontUrlBuilder` writes and signs the distribution hostname the same way.
+- `S3UrlBuilder` and `CloudfrontUrlBuilder` write an HTTPS URL by default.
+- `S3UrlBuilder` puts the bucket in the path when its name contains a period and the URL is HTTPS, and when the endpoint
+  is an IP address.
+- `S3UrlBuilder.inRegion` reads the region in lower case, so the signature names the region as the host does.
+- `CloudfrontUrlBuilder` rejects a key that is blank or only slashes, and `addParameter` rejects the parameter names
+  CloudFront reads the signature from.
+- `new UrlBuilder(String)`, `PathSegmentEncoder.decode`, and `QueryParameterEncoder.decode` throw
+  `IllegalArgumentException` for a percent-encoded sequence that is not UTF-8. They wrote U+FFFD in its place.
+- `UrlBuilder.toString()` throws `IllegalArgumentException` for a blank hostname in protocol-relative mode.
+- `UrlBuilder.getPort()` returns 0 for a URL parsed without a port and for a negative port.
 - An expiration past `Instant.MAX` throws `IllegalArgumentException` instead of `ArithmeticException`.
 - `toURL()` wraps a `MalformedURLException` in a `RuntimeException`.
 - `NoEncodingEncoder` is final.
@@ -141,6 +169,7 @@ upgrade notes first.
 
 - `UrlBuilder.usingEncoder(Encoder)`. Use `usingPathEncoder(Encoder)` and `usingQueryEncoder(Encoder)`.
 - `BuiltinEncoder`. Use `LegacyEncoder` for the same output.
+- `StringUtilsInternal` and `InternalUtils` from the public API. They are helpers for the library's own code.
 
 ### Fixed
 
@@ -164,6 +193,8 @@ upgrade notes first.
   `a//b` named the objects `folder` and `a/b`.
 - `UrlBuilder` left port 80 out of an `https` URL and port 443 out of an `http` URL, so the URL named the wrong port.
   `SigningContext.getPort()` returned null for those ports as well.
+- `S3UrlBuilder.inRegion` wrote an `amazonaws.com` host for a China region such as `cn-north-1`, whose endpoint ends in
+  `amazonaws.com.cn`.
 
 ### Security
 
@@ -174,4 +205,9 @@ upgrade notes first.
   containing `/` or `?` sent the URL, with its access key ID and signature, to another host. A bucket name with any
   character other than lowercase letters, digits, `.`, and `-` now goes in the path.
 - A key of only slashes, such as `/`, made `S3UrlBuilder` sign the bucket itself, a URL that lists the bucket's keys.
+- A null, empty, or slash-only key made `CloudfrontUrlBuilder` sign the root of the distribution.
+- A protocol-relative `UrlBuilder` with an empty hostname wrote `///path`, which a browser reads as a link to the host
+  that the first path segment names.
+- The parser read `%` followed by digits of another script, such as the fullwidth `２Ｅ`, as a percent-encoded byte, so
+  `%２Ｅ%２Ｅ` came out as `..` after a filter had found no dots in the URL. It now reads only ASCII hex digits.
 - BouncyCastle 1.87 includes the fixes for CVE-2025-14813, CVE-2026-5588, CVE-2026-8763, and CVE-2026-13506.
